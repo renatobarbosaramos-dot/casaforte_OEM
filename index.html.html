@@ -1,0 +1,3001 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Manutenção — Usinas Solares | Casa Forte Energia · O&M</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* CasaForte Brand Palette */
+  --bg:#f5f3ef;--surface:#fff;--surface2:#eeece7;
+  --border:rgba(0,0,0,.09);--border2:rgba(0,0,0,.17);
+  --text:#23201f;--text2:#6b6358;--text3:#9a9189;
+
+  /* Amarelo Ouro — cor principal (ações, destaques) */
+  --blue:#FFCA0A;--blue-l:#FFF6CC;--blue-d:#7a5c00;
+
+  /* Fendi — cor de apoio escura (cabeçalhos, badges secundários) */
+  --amber:#7a6e60;--amber-l:#edeae4;--amber-d:#3d3630;
+
+  /* Pedra clara — verificação, neutro quente */
+  --green:#7a6e60;--green-l:#e8e4de;--green-d:#4a4138;
+
+  /* Amarelo Limão — alertas, MC */
+  --red:#9a8800;--red-l:#fffbd0;--red-d:#5a5000;
+
+  --r:8px;--rl:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+/* Header */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:34px;height:34px;border-radius:8px;background:#FFCA0A;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hdr-logo svg{width:18px;height:18px;fill:#fff}
+.hdr h1{font-size:16px;font-weight:600}
+.hdr-sub{font-size:11px;color:var(--text2)}
+.hdr-badge{background:var(--blue-l);color:var(--blue-d);font-size:12px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid rgba(160,122,0,.25);white-space:nowrap}
+/* Layout */
+.page{max-width:1340px;margin:0 auto;padding:22px 28px}
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+.mc{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;display:flex;align-items:flex-start;gap:11px}
+.mc-icon{width:36px;height:36px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mc-icon svg{width:17px;height:17px}
+.mc-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600}
+.mc-val{font-size:24px;font-weight:700;line-height:1;margin-bottom:2px}
+.mc-sub{font-size:11px;color:var(--text2)}
+/* Amarelo Ouro — Total OS, Em Processo */
+.m-b .mc-icon{background:#fff8dc} .m-b .mc-icon svg{fill:#FFCA0A} .m-b .mc-val{color:#FFCA0A}
+/* Fendi escuro — Verificação */
+.m-a .mc-icon{background:#edeae4} .m-a .mc-icon svg{fill:#4a4138} .m-a .mc-val{color:#4a4138}
+/* Pedra — PMP Planejadas */
+.m-g .mc-icon{background:#e8e4de} .m-g .mc-icon svg{fill:#6b6358} .m-g .mc-val{color:#6b6358}
+/* Amarelo Limão — MC / Alertas */
+.m-r .mc-icon{background:#fdfae0} .m-r .mc-icon svg{fill:#7a7000} .m-r .mc-val{color:#7a7000}
+/* Amarelo Ouro variante — Usinas */
+.m-p .mc-icon{background:#fff8dc} .m-p .mc-icon svg{fill:#FFCA0A} .m-p .mc-val{color:#FFCA0A}
+/* Tabs */
+.tab-bar{display:flex;gap:2px;border-bottom:1.5px solid var(--border);margin-bottom:20px}
+.tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1.5px;padding:9px 16px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border-radius:6px 6px 0 0;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tab-btn:hover{color:var(--text);background:var(--surface2)}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-btn svg{width:14px;height:14px;fill:currentColor;flex-shrink:0}
+.sec{display:none} .sec.on{display:block}
+/* Filters */
+.fbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:14px}
+.fbar label{font-size:12px;color:var(--text2);font-weight:500}
+.fbar select,.fbar input[type=text]{font-size:13px;padding:5px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);color:var(--text)}
+.fbar input[type=text]{min-width:170px}
+.fbar select:focus,.fbar input:focus{outline:2px solid var(--blue);outline-offset:1px}
+.fbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.fbar-count{font-size:12px;color:var(--text3)}
+.filter-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:#fff8dc;color:#634c00;border:1px solid rgba(160,122,0,.3)}
+.mc.mc-filtered{border-color:var(--blue)!important;box-shadow:inset 0 0 0 1px rgba(160,122,0,.15)}
+.sub-filtered{color:var(--blue)!important;font-weight:600}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;padding:7px 14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;flex-shrink:0}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:var(--blue-d);border-color:var(--blue-d)}
+.btn-primary svg{stroke:#fff}
+.btn-danger{background:var(--red-l);color:var(--red);border-color:rgba(163,45,45,.2)}
+.btn-danger:hover{background:#f7c1c1}
+.btn-sm{font-size:12px;padding:4px 10px}
+.btn-icon{padding:5px 7px}
+.btn-import{background:#edeae4;color:#3d3630;border-color:rgba(122,110,96,.25)}
+.btn-import:hover{background:#dedad2;border-color:#7a6e60}
+.btn-import svg{stroke:#3d3630}
+.btn-import-pmp{background:#edeae4;color:#3d3630;border-color:rgba(122,110,96,.25)}
+.btn-import-pmp:hover{background:#dedad2}
+.btn-import-pmp svg{stroke:#3d3630}
+/* Import drop zone */
+.import-zone{border:2px dashed var(--border2);border-radius:var(--rl);padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.import-zone:hover,.import-zone.drag{border-color:var(--blue);background:var(--blue-l)}
+.import-zone.drag{border-style:solid}
+.import-zone input[type=file]{display:none}
+.import-zone-icon{width:44px;height:44px;border-radius:var(--rl);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.import-zone-icon svg{width:22px;height:22px}
+.import-zone h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.import-zone p{font-size:12px;color:var(--text2)}
+.import-zone .ext-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;margin-top:6px;font-family:monospace}
+.import-progress{margin-top:14px;display:none}
+.import-progress-bar{height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-bottom:6px}
+.import-progress-fill{height:100%;border-radius:2px;background:var(--blue);width:0;transition:width .3s}
+.import-progress-msg{font-size:12px;color:var(--text2);text-align:center}
+.import-preview{margin-top:14px;display:none}
+.import-preview-hdr{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.import-preview-rows{background:var(--surface2);border-radius:var(--r);padding:10px 12px;max-height:160px;overflow-y:auto;font-size:11.5px}
+.import-preview-row{padding:3px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:baseline}
+.import-preview-row:last-child{border-bottom:none}
+.import-result{background:#fff8dc;border:1px solid rgba(160,122,0,.25);border-radius:var(--r);padding:12px 14px;margin-top:12px;display:none}
+.import-result.error{background:var(--red-l);border-color:rgba(122,112,0,.25)}
+.import-result p{font-size:13px;color:var(--text);font-weight:500}
+.import-result span{font-size:12px;color:var(--text2)}
+.import-tabs{display:flex;gap:1px;margin-bottom:16px}
+.import-tab{flex:1;padding:9px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);transition:all .15s}
+.import-tab:first-child{border-radius:var(--r) 0 0 var(--r)}
+.import-tab:last-child{border-radius:0 var(--r) var(--r) 0}
+.import-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.import-panel{display:none}.import-panel.active{display:block}
+/* Table */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.tbl-scroll{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:900px}
+.tbl thead{background:var(--surface2)}
+.tbl th{text-align:left;font-size:10.5px;font-weight:600;color:var(--text3);padding:9px 12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:#faf8f2}
+.mono{font-family:'SF Mono','Fira Code',monospace;font-size:11px;color:var(--text2)}
+/* Badges */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.b-proc{background:var(--blue-l);color:var(--blue-d)}
+.b-verif{background:var(--amber-l);color:var(--amber-d)}
+.b-mc{background:var(--red-l);color:var(--red)}
+.b-pmp{background:var(--blue-l);color:var(--blue-d)}
+.b-insp{background:var(--green-l);color:var(--green-d)}
+.utag{display:inline-block;font-family:monospace;font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
+/* Pagination */
+.pagination{display:flex;align-items:center;gap:6px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);border-radius:0 0 var(--rl) var(--rl)}
+.page-info{font-size:12px;color:var(--text2);margin-right:auto}
+.page-btn{padding:5px 10px;font-size:12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text)}
+.page-btn:hover{background:var(--surface2)}
+.page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--rl);width:100%;max-width:600px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-hdr{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-hdr h2{font-size:15px;font-weight:600}
+.modal-body{padding:20px;overflow-y:auto;flex:1}
+.modal-ftr{padding:13px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+/* Form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+.form-row.full{grid-template-columns:1fr}
+.form-row.thirds{grid-template-columns:1fr 1fr 1fr}
+.fgroup{display:flex;flex-direction:column;gap:4px}
+.fgroup label{font-size:12px;font-weight:500;color:var(--text2)}
+.fgroup input,.fgroup select,.fgroup textarea{font-size:13px;padding:7px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);color:var(--text);width:100%;transition:border .15s}
+.fgroup input:focus,.fgroup select:focus,.fgroup textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(160,122,0,.1)}
+.fgroup textarea{resize:vertical;min-height:68px}
+.fgroup .hint{font-size:11px;color:var(--text3)}
+.req{color:var(--red)}
+.form-sep{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+/* PMP */
+.usina-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+.ucard{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rl);padding:11px 13px;cursor:pointer;transition:all .15s}
+.ucard:hover{border-color:var(--blue);background:var(--blue-l)}
+.ucard.sel{border-color:var(--blue);background:var(--blue-l);box-shadow:0 0 0 3px rgba(160,122,0,.1)}
+.ucard-name{font-size:13px;font-weight:700;margin-bottom:3px;color:var(--text)}
+.ucard-stats{font-size:11px;color:var(--text2)}
+.pbar{height:3px;border-radius:2px;background:var(--border);margin-top:7px}
+.pbar-f{height:100%;border-radius:2px;background:var(--blue)}
+.pmp-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.pmp-hdr{background:#FFCA0A;color:#3d3630 !important;color:#fff;padding:11px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.pmp-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border)}
+.pmp-row:last-child{border-bottom:none}
+.pmp-row:hover{background:#faf8f0}
+.pmp-date{min-width:82px;padding:9px 13px;font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-l);border-right:1px solid rgba(160,122,0,.18);display:flex;align-items:flex-start;padding-top:11px;flex-shrink:0}
+.pmp-acts{padding:6px 13px;flex:1}
+.pmp-act-row{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;padding:3px 0}
+.pmp-act-row:not(:last-child){border-bottom:1px dashed rgba(0,0,0,.05)}
+.pmp-act-text{font-size:12px;flex:1;display:flex;gap:5px;align-items:baseline}
+.pmp-act-text::before{content:"•";color:var(--blue);flex-shrink:0;font-size:10px}
+.pmp-act-btns{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.pmp-row:hover .pmp-act-btns{opacity:1}
+/* Calendar */
+.cal-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;color:var(--text2)}
+.cal-leg-item{display:flex;align-items:center;gap:5px}
+.cal-leg-dot{width:10px;height:10px;border-radius:3px}
+.cal-detail-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:12px 16px;margin-bottom:14px;min-height:54px}
+.cal-detail-title{font-size:13px;font-weight:600;margin-bottom:7px}
+.cal-detail-items{display:flex;flex-direction:column;gap:3px;max-height:200px;overflow-y:auto}
+.cal-day.cal-day-open{border:2px solid var(--blue);background:#fffbe8;box-shadow:0 0 0 3px rgba(255,202,10,.15)}
+.cal-detail-item{font-size:12px;display:flex;gap:6px;align-items:baseline;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.06)}
+.cal-detail-item:last-child{border-bottom:none}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-hdr{font-size:11px;font-weight:600;color:var(--text3);text-align:center;padding:4px 0;text-transform:uppercase;letter-spacing:.03em}
+.cal-day{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:7px 5px;min-height:58px;cursor:pointer;transition:all .15s}
+.cal-day:hover{border-color:var(--blue);background:#fffaed}
+.cal-day.has-ev{border-color:rgba(160,122,0,.3)}
+.cal-day.today{border:2px solid var(--blue);background:#fffbe8}
+.cal-day.today .cal-dn{color:var(--blue);font-weight:700}
+.cal-day.empty{background:transparent;border-color:transparent;cursor:default}
+.cal-dn{font-size:12px;font-weight:500;margin-bottom:4px}
+.cal-dots{display:flex;flex-wrap:wrap;gap:3px}
+.cal-dot{width:6px;height:6px;border-radius:50%}
+/* Charts */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.chart-card h3{font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text)}
+.chart-card.full{grid-column:1/-1}
+.chart-leg{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:12px;color:var(--text2)}
+.chart-leg-i{display:flex;align-items:center;gap:4px}
+.chart-leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a18;color:#fff;font-size:13px;padding:10px 16px;border-radius:var(--r);box-shadow:0 4px 20px rgba(0,0,0,.25);opacity:0;transform:translateY(8px);transition:all .25s;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+/* Misc */
+.empty{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.select-hint{text-align:center;padding:28px;color:var(--text3);font-size:13px;border:1.5px dashed var(--border);border-radius:var(--rl)}
+@media(max-width:1000px){.metrics{grid-template-columns:repeat(3,1fr)}.charts-grid{grid-template-columns:1fr}.page{padding:14px}.hdr{padding:11px 14px}}
+@media(max-width:640px){.metrics{grid-template-columns:repeat(2,1fr)}.tab-btn span{display:none}}
+@media print{.tab-bar,.fbar-right,.tbl-actions{display:none!important}.sec{display:block!important;margin-bottom:30px}.hdr{position:static}}
+
+/* ── FFCA0A yellow text readability overrides ── */
+.mc-val, .tab-btn.active, .pmp-date, .page-btn.active,
+.cal-day.today .cal-dn, .cal-detail-item::before,
+.pmp-act-text::before {
+  color: #b38a00 !important;
+}
+.tab-btn.active { border-bottom-color: #FFCA0A !important; }
+.pmp-act-text::before { color: #FFCA0A !important; }
+.btn-primary { color: #3d3630 !important; }
+.btn-primary svg { stroke: #3d3630 !important; }
+.hdr-logo { background: #FFCA0A !important; }
+.hdr-logo svg { fill: #3d3630 !important; }
+.hdr-badge { background: #FFF6CC !important; color: #7a5c00 !important; border-color: rgba(255,202,10,.35) !important; }
+.mc-icon { background: #FFF6CC !important; }
+.m-b .mc-icon svg, .m-p .mc-icon svg { fill: #b38a00 !important; }
+.m-b .mc-val, .m-p .mc-val { color: #b38a00 !important; }
+.import-tab.active { background: #FFCA0A !important; color: #3d3630 !important; border-color: #FFCA0A !important; }
+.pbar-f { background: #FFCA0A !important; }
+.import-progress-fill { background: #FFCA0A !important; }
+.import-result { background: #FFF6CC !important; border-color: rgba(255,202,10,.35) !important; }
+.filter-tag { background: #FFF6CC !important; color: #7a5c00 !important; border-color: rgba(255,202,10,.35) !important; }
+.mc.mc-filtered { border-color: #FFCA0A !important; }
+.sub-filtered { color: #b38a00 !important; }
+
+/* ── Roçagem filter buttons ── */
+.rc-filter-btn { border-radius:20px!important; transition:all .15s; }
+.rc-filter-btn.rc-active { background:var(--blue)!important; color:#3d3630!important; border-color:var(--blue)!important; font-weight:600; }
+.rc-kpi-card { transition: opacity .2s, box-shadow .2s; }
+.rc-kpi-card.rc-dimmed { opacity: .35; }
+.btn-reset {
+  background: var(--surface);
+  color: var(--text2);
+  border-color: var(--border2);
+}
+.btn-reset:hover { background: var(--surface2); }
+.btn-reset svg { stroke: var(--text2); }
+
+/* ── Delete data button (red) ── */
+.btn-delete-data {
+  background: var(--red-l);
+  color: var(--red);
+  border-color: rgba(163,45,45,.22);
+}
+.btn-delete-data:hover { background: #f7c1c1; border-color: rgba(163,45,45,.4); }
+.btn-delete-data svg { stroke: var(--red); }
+
+/* ── Reset confirm modal ── */
+.reset-modal-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--red-l); display: flex; align-items: center;
+  justify-content: center; margin: 0 auto 14px;
+}
+.reset-modal-icon svg { width: 22px; height: 22px; stroke: var(--red); fill: none; stroke-width: 2; }
+.reset-checklist { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.reset-check-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--r);
+  background: var(--surface2); border: 1px solid var(--border);
+  font-size: 13px; cursor: pointer; user-select: none; transition: all .15s;
+}
+.reset-check-item:hover { border-color: var(--border2); }
+.reset-check-item input[type=checkbox] {
+  width: 15px; height: 15px; accent-color: var(--red);
+  flex-shrink: 0; cursor: pointer;
+}
+.reset-check-item.checked {
+  background: var(--red-l); border-color: rgba(163,45,45,.25);
+}
+.reset-check-label { display: flex; flex-direction: column; gap: 2px; }
+.reset-check-label strong { font-size: 13px; font-weight: 600; color: var(--text); }
+.reset-check-label span { font-size: 11px; color: var(--text3); }
+.btn-reset-confirm {
+  background: var(--red); color: #fff; border-color: var(--red);
+}
+.btn-reset-confirm:hover { background: var(--red-d); border-color: var(--red-d); }
+.btn-reset-confirm:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Bulk delete bar ── */
+.bulk-bar {
+  display: none; align-items: center; gap: 10px;
+  background: var(--red-l); border: 1px solid rgba(163,45,45,.22);
+  border-radius: var(--r); padding: 9px 14px; margin-bottom: 10px;
+  animation: slideDown .18s ease;
+}
+.bulk-bar.on { display: flex; }
+@keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.bulk-bar-count { font-size: 13px; font-weight: 600; color: var(--red); flex: 1; }
+.bulk-bar-count span { font-weight: 400; color: var(--text2); margin-left: 4px; font-size: 12px; }
+.btn-bulk-delete {
+  background: var(--red); color: #fff; border-color: var(--red);
+  font-size: 12px; padding: 5px 12px; border-radius: var(--r);
+  border: 1px solid; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  transition: all .15s;
+}
+.btn-bulk-delete:hover { background: var(--red-d); border-color: var(--red-d); }
+.btn-bulk-cancel {
+  font-size: 12px; padding: 5px 10px; border-radius: var(--r);
+  background: transparent; border: 1px solid rgba(163,45,45,.3);
+  color: var(--red); cursor: pointer; transition: all .15s;
+}
+.btn-bulk-cancel:hover { background: rgba(163,45,45,.08); }
+/* checkbox column */
+.tbl th.col-chk, .tbl td.col-chk { width: 36px; padding-left: 12px; padding-right: 4px; }
+.row-chk { width: 14px; height: 14px; accent-color: var(--red); cursor: pointer; }
+.tbl tr.row-selected td { background: var(--red-l) !important; }
+
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <div class="hdr-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <h1>Casa Forte Energia · O&M</h1>
+      <div class="hdr-sub">Painel de Operação &amp; Manutenção — Usinas Solares</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="btn btn-reset" onclick="resetFilters()" title="Limpar todos os filtros ativos" style="font-size:13px">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke-width:2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      Limpar filtros
+    </button>
+    <button class="btn btn-delete-data" onclick="openDeleteDataModal()" title="Excluir dados cadastrados" style="font-size:13px">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke-width:2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      Excluir dados
+    </button>
+    <button class="btn btn-import" onclick="openModal('modal-import')" style="font-size:13px">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:#3d3630;stroke-width:2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Importar Arquivos
+    </button>
+    <div class="hdr-badge" id="hdr-month">📅 —</div>
+  </div>
+</header>
+
+<main class="page">
+
+  <div class="metrics">
+    <div class="mc m-b">
+      <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+      <div><div class="mc-lbl">Total de OS</div><div class="mc-val" id="m-total">0</div><div class="mc-sub" id="m-total-sub">ordens cadastradas</div></div>
+    </div>
+    <div class="mc m-b">
+      <div class="mc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div><div class="mc-lbl">Em Processo</div><div class="mc-val" id="m-proc">0</div><div class="mc-sub" id="m-proc-sub">execução em campo</div></div>
+    </div>
+    <div class="mc m-a">
+      <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <div><div class="mc-lbl">Verificação</div><div class="mc-val" id="m-verif">0</div><div class="mc-sub" id="m-verif-sub">análise Casa Forte</div></div>
+    </div>
+    <div class="mc m-g">
+      <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+      <div><div class="mc-lbl">PMP Planejadas</div><div class="mc-val" id="m-pmp">0</div><div class="mc-sub">atividades no plano</div></div>
+    </div>
+    <div class="mc m-p">
+      <div class="mc-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+      <div><div class="mc-lbl">Usinas</div><div class="mc-val" id="m-usinas">0</div><div class="mc-sub" id="m-usinas-sub">unidades no plano</div></div>
+    </div>
+  </div>
+
+  <div class="tab-bar" style="overflow-x:auto;flex-wrap:nowrap">
+    <button class="tab-btn active" onclick="switchTab('os',this)">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h6"/></svg>
+      <span>Ordens de Serviço</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('pmp',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
+      <span>Plano de Manutenção</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('cal',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Calendário</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('charts',this)">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Análise</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('rocagem',this)">
+      <svg viewBox="0 0 24 24"><path d="M12 22V12M12 12C12 12 7 10 4 6c4 0 8 2 8 6zM12 12c0 0 5-2 8-6-4 0-8 2-8 6z"/></svg>
+      <span>Roçagem/Lavagem/Herb.</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('insp-area',this)">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg>
+      <span>Inspeção em Área de Geração</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('oc',this)">
+      <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      <span>Lista OC Local</span>
+    </button>
+  </div>
+
+  <!-- ═══ OS ═══ -->
+  <div id="sec-os" class="sec on">
+    <div class="fbar">
+      <label>Buscar:</label>
+      <input type="text" id="f-search" placeholder="ID, tarefa, responsável, ativo…" oninput="filterOS()">
+      <label>Usina:</label>
+      <select id="f-usina" onchange="filterOS()"><option value="">Todas</option></select>
+      <label>Status:</label>
+      <select id="f-status" onchange="filterOS()">
+        <option value="">Todos</option><option>Em processo</option><option>Verificação</option>
+      </select>
+      <label>Tipo:</label>
+      <select id="f-tipo" onchange="filterOS()">
+        <option value="">Todos</option>
+        <option value="MC">Corretiva (MC)</option>
+        <option value="PMP">Preventiva (PMP)</option>
+        <option value="INSP">Inspeção (INSP)</option>
+        <option value="OUTROS">Outros</option>
+      </select>
+      <div class="fbar-right">
+        <span class="fbar-count" id="f-count"></span>
+        <button class="btn" id="btn-clear-filters" onclick="clearFilters()" style="display:none">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Limpar filtros
+        </button>
+        <button class="btn btn-import" onclick="openImportModal('os')">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#3d3630;stroke-width:2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importar .xlsx
+        </button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr>
+            <th style="width:148px">OS ID</th>
+            <th style="width:100px">Status</th>
+            <th style="width:66px">Usina</th>
+            <th style="width:72px">Tipo</th>
+            <th>Tarefa</th>
+            <th style="width:140px">Ativo</th>
+            <th style="width:87px">Data</th>
+            <th style="width:140px">Responsável</th>
+          </tr></thead>
+          <tbody id="os-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pag"></div>
+    </div>
+  </div>
+
+  <!-- ═══ PMP ═══ -->
+  <div id="sec-pmp" class="sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:13px;color:var(--text2)">Selecione uma usina para visualizar o plano de manutenção preventiva</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-import-pmp" onclick="openImportModal('pmp')">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#4a4138;stroke-width:2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importar .html
+        </button>
+        <button class="btn btn-import" onclick="downloadPMP()" title="Exportar plano no mesmo formato de importação">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#3d3630;stroke-width:2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar Plano (.html)
+        </button>
+      </div>
+    </div>
+    <div class="usina-grid" id="usina-sel"></div>
+    <div id="pmp-detail"><div class="select-hint">Selecione uma usina acima para visualizar o plano de manutenção preventiva.<br><span style="color:var(--text3);font-size:11px;display:block;margin-top:6px">Sem usinas? Importe um arquivo .html via <strong>Importar .html</strong>.</span></div></div>
+  </div>
+
+  <!-- ═══ CALENDÁRIO ═══ -->
+  <div id="sec-cal" class="sec">
+    <div class="cal-legend">
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#FFCA0A"></div>Atividade PMP</div>
+      <div class="cal-leg-item"><div style="width:14px;height:14px;border:2px solid #FFCA0A;border-radius:4px"></div>Hoje</div>
+    </div>
+    <div class="cal-detail-box" id="cal-detail">
+      <div style="color:var(--text3);font-size:12px">Clique em um dia para ver as atividades do plano de manutenção preventiva.</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <!-- ═══ ANÁLISE ═══ -->
+  <div id="sec-charts" class="sec">
+    <div class="fbar" style="margin-bottom:16px">
+      <label>Usina:</label>
+      <select id="ch-f-usina" onchange="buildCharts()"><option value="">Todas</option></select>
+      <label>Buscar:</label>
+      <input type="text" id="ch-f-search" placeholder="ID, tarefa, ativo…" oninput="buildCharts()" style="min-width:200px">
+      <div class="fbar-right">
+        <span class="fbar-count" id="ch-f-count"></span>
+        <button class="btn btn-reset" onclick="clearChartFilters()">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Limpar filtros
+        </button>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Status das OS</h3>
+        <div style="position:relative;height:200px"><canvas id="ch-status" role="img" aria-label="Status OS">—</canvas></div>
+        <div class="chart-leg" id="leg-status"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Tipo de manutenção</h3>
+        <div style="position:relative;height:200px"><canvas id="ch-tipos" role="img" aria-label="Tipo OS">—</canvas></div>
+        <div class="chart-leg" id="leg-tipos"></div>
+      </div>
+      <div class="chart-card full">
+        <h3>OS por usina — Em processo vs Verificação</h3>
+        <div style="position:relative;height:280px"><canvas id="ch-usinas" role="img" aria-label="OS por usina">—</canvas></div>
+      </div>
+      <div class="chart-card full">
+        <h3>Atividades PMP planejadas por dia — Maio/2026</h3>
+        <div style="position:relative;height:200px"><canvas id="ch-pmp" role="img" aria-label="PMP por dia">—</canvas></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══ ROÇAGEM / LAVAGEM / HERBICIDA ═══ -->
+  <div id="sec-rocagem" class="sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;color:var(--text2)">Planejamento de Roçagem, Lavagem e Herbicida — consolidado das OS</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-import" onclick="exportRocagem()">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#3d3630;stroke-width:2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar .xlsx
+        </button>
+        <button class="btn btn-primary" onclick="openRocagemModal()">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo Planejamento
+        </button>
+      </div>
+    </div>
+    <!-- Filtros de macroatividade -->
+    <div class="fbar" style="margin-bottom:14px;gap:6px">
+      <label style="font-size:12px;color:var(--text2);font-weight:500">Filtrar por:</label>
+      <button id="rc-btn-all"    class="btn btn-sm rc-filter-btn rc-active" onclick="setRocagemFilter('all')"       style="border-radius:20px">Todas</button>
+      <button id="rc-btn-rocagem" class="btn btn-sm rc-filter-btn"           onclick="setRocagemFilter('Roçagem')"  style="border-radius:20px">🌿 Roçagem</button>
+      <button id="rc-btn-lavagem" class="btn btn-sm rc-filter-btn"           onclick="setRocagemFilter('Lavagem')"  style="border-radius:20px">💧 Lavagem</button>
+      <button id="rc-btn-herb"    class="btn btn-sm rc-filter-btn"           onclick="setRocagemFilter('Herbicida')" style="border-radius:20px">🧪 Herbicida</button>
+      <div class="fbar-right">
+        <span class="fbar-count" id="rc-filter-count"></span>
+      </div>
+    </div>
+    <!-- Resumo das macroatividades das OS -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
+      <div class="mc rc-kpi-card" id="rc-rocagem-card">
+        <div class="mc-icon" style="background:#e8f5e9"><svg viewBox="0 0 24 24" style="fill:none;stroke:#2e7d32;stroke-width:1.8"><path d="M12 22V12M12 12C12 12 7 10 4 6c4 0 8 2 8 6zM12 12c0 0 5-2 8-6-4 0-8 2-8 6z"/></svg></div>
+        <div><div class="mc-lbl">Roçagem</div><div class="mc-val" id="rc-rocagem-count" style="color:#2e7d32">0</div><div class="mc-sub" id="rc-rocagem-sub">OS relacionadas</div></div>
+      </div>
+      <div class="mc rc-kpi-card" id="rc-lavagem-card">
+        <div class="mc-icon" style="background:#e3f2fd"><svg viewBox="0 0 24 24" style="fill:none;stroke:#1565c0;stroke-width:1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+        <div><div class="mc-lbl">Lavagem</div><div class="mc-val" id="rc-lavagem-count" style="color:#1565c0">0</div><div class="mc-sub" id="rc-lavagem-sub">OS relacionadas</div></div>
+      </div>
+      <div class="mc rc-kpi-card" id="rc-herb-card">
+        <div class="mc-icon" style="background:#fff8e1"><svg viewBox="0 0 24 24" style="fill:none;stroke:#f57f17;stroke-width:1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+        <div><div class="mc-lbl">Herbicida</div><div class="mc-val" id="rc-herb-count" style="color:#f57f17">0</div><div class="mc-sub" id="rc-herb-sub">OS relacionadas</div></div>
+      </div>
+    </div>
+    <!-- Tabela de planejamentos manuais -->
+    <div class="tbl-wrap">
+      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text2);display:flex;justify-content:space-between;align-items:center">
+        <span>Cronograma de Planejamentos</span>
+        <span id="rocagem-count-label" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl" style="min-width:800px">
+          <thead><tr>
+            <th>Atividade</th>
+            <th>Usina</th>
+            <th>Data Início</th>
+            <th>Data Fim</th>
+            <th>Responsável</th>
+            <th>Status</th>
+            <th>Observações</th>
+            <th style="width:72px">Ações</th>
+          </tr></thead>
+          <tbody id="rocagem-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- OS Relacionadas -->
+    <div style="margin-top:18px">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px" id="rc-os-title">OS Relacionadas (Roçagem, Lavagem, Herbicida)</div>
+      <div class="tbl-wrap">
+        <div class="tbl-scroll">
+          <table class="tbl" style="min-width:700px">
+            <thead><tr>
+              <th>OS ID</th><th>Usina</th><th>Tipo Ativ.</th><th>Tarefa</th><th>Status</th><th>Data</th><th>Responsável</th>
+            </tr></thead>
+            <tbody id="rocagem-os-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ INSPEÇÃO DE ÁREA DE GERAÇÃO ═══ -->
+  <div id="sec-insp-area" class="sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;color:var(--text2)">Inspeções em Área de Geração — checklist de campo por usina</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-import" onclick="exportInspArea()">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#3d3630;stroke-width:2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar .xlsx
+        </button>
+        <button class="btn btn-primary" onclick="openInspAreaModal()">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova Inspeção
+        </button>
+      </div>
+    </div>
+    <div class="fbar" style="margin-bottom:14px">
+      <label>Usina:</label>
+      <select id="insp-f-usina" onchange="renderInspArea()"><option value="">Todas</option></select>
+      <label>Status:</label>
+      <select id="insp-f-status" onchange="renderInspArea()">
+        <option value="">Todos</option><option>Conforme</option><option>Atenção</option><option>Crítico</option>
+      </select>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table class="tbl" style="min-width:900px">
+          <thead><tr>
+            <th>Data</th>
+            <th>Usina</th>
+            <th>Vegetação</th>
+            <th>Sujidade</th>
+            <th>Formigueiro/Cupinzeiro</th>
+            <th>Drenagem</th>
+            <th>Herbicida</th>
+            <th>Inspetor</th>
+            <th style="width:78px">Ações</th>
+          </tr></thead>
+          <tbody id="insp-area-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LISTA OC LOCAL ═══ -->
+  <div id="sec-oc" class="sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;color:var(--text2)">Ordens de Compra — input e controle local</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-import" onclick="exportOC()">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#3d3630;stroke-width:2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar .xlsx
+        </button>
+        <button class="btn btn-primary" onclick="openOCModal()">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova OC
+        </button>
+      </div>
+    </div>
+    <div class="fbar" style="margin-bottom:14px">
+      <label>Buscar:</label>
+      <input type="text" id="oc-search" placeholder="Equipamento, OC, solicitante…" oninput="renderOC()" style="min-width:200px">
+      <label>Usina:</label>
+      <select id="oc-f-usina" onchange="renderOC()"><option value="">Todas</option></select>
+      <label>Status:</label>
+      <select id="oc-f-status" onchange="renderOC()">
+        <option value="">Todos</option>
+        <option>OK</option><option>PENDENTE</option><option>HM ASS</option>
+        <option>CONSULTAR TECNICO</option><option>AGUARDAR ORÇAMENTO</option>
+        <option>HM APROVAR</option><option>FINALIZADO</option>
+      </select>
+      <div class="fbar-right">
+        <span class="fbar-count" id="oc-count"></span>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table class="tbl" style="min-width:1400px">
+          <thead><tr>
+            <th>Solicitado por</th>
+            <th>Usina</th>
+            <th>Qtd</th>
+            <th>Equipamento</th>
+            <th>Data Inicial</th>
+            <th>Data Final</th>
+            <th>R$</th>
+            <th>Orçamento</th>
+            <th>OC Aprovada</th>
+            <th>N° da OC</th>
+            <th>Equip. Entregue</th>
+            <th>Normalizado Campo</th>
+            <th>Status</th>
+            <th>Prioridade</th>
+            <th style="width:72px">Ações</th>
+          </tr></thead>
+          <tbody id="oc-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══ MODAL OS ═══ -->
+<div class="overlay" id="modal-os">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2 id="mos-title">Nova Ordem de Serviço</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-os')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mos-idx">
+      <div class="form-row">
+        <div class="fgroup">
+          <label>OS ID <span class="req">*</span></label>
+          <input type="text" id="mos-id" placeholder="OS.2026XXXXXX.CFI">
+        </div>
+        <div class="fgroup">
+          <label>Data de Criação <span class="req">*</span></label>
+          <input type="text" id="mos-data" placeholder="2026-05-29 14:00">
+        </div>
+      </div>
+      <div class="form-row thirds">
+        <div class="fgroup">
+          <label>Usina <span class="req">*</span></label>
+          <input type="text" id="mos-usina" placeholder="Ex: ARA1" list="dl-usinas">
+          <datalist id="dl-usinas"></datalist>
+        </div>
+        <div class="fgroup">
+          <label>Status <span class="req">*</span></label>
+          <select id="mos-status">
+            <option>Em processo</option>
+            <option>Verificação</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Tipo <span class="req">*</span></label>
+          <select id="mos-tipo">
+            <option value="MC">Corretiva (MC)</option>
+            <option value="PMP">Preventiva (PMP)</option>
+            <option value="INSP">Inspeção (INSP)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="fgroup">
+          <label>Tarefa / Descrição <span class="req">*</span></label>
+          <textarea id="mos-tarefa" rows="3" placeholder="[USINA] Tipo - Descrição da atividade…"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Ativo / Equipamento</label>
+          <input type="text" id="mos-ativo" placeholder="Ex: Inversor, Tracker, QGBT…">
+        </div>
+        <div class="fgroup">
+          <label>Responsável <span class="req">*</span></label>
+          <input type="text" id="mos-resp" placeholder="Nome do técnico responsável">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="fgroup">
+          <label>Criado por</label>
+          <input type="text" id="mos-criado" placeholder="Nome de quem abriu a OS">
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal('modal-os')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveOS()">Salvar OS</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL PMP ═══ -->
+<div class="overlay" id="modal-pmp">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2 id="mpmp-title">Nova Atividade de Manutenção</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-pmp')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mpmp-usina-orig">
+      <input type="hidden" id="mpmp-dia-idx">
+      <input type="hidden" id="mpmp-at-idx">
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Usina <span class="req">*</span></label>
+          <input type="text" id="mpmp-usina" placeholder="Ex: ARA1, BRC1,2…" list="dl-usinas-pmp">
+          <datalist id="dl-usinas-pmp"></datalist>
+          <span class="hint">Se não existir, será criada</span>
+        </div>
+        <div class="fgroup">
+          <label>Data (DD/MM) <span class="req">*</span></label>
+          <input type="text" id="mpmp-data" placeholder="Ex: 18/05" maxlength="5">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="fgroup">
+          <label>Descrição da Atividade <span class="req">*</span></label>
+          <textarea id="mpmp-ativ" rows="3" placeholder="Ex: [ARA1] PMP - MANUTENÇÃO PREVENTIVA SEMANAL - ÁREA DA ESTAÇÃO SOLARIMÉTRICA - Estação Solarimétrica"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Frequência</label>
+          <select id="mpmp-freq">
+            <option value="">Selecione…</option>
+            <option>Semanal</option><option>Mensal</option><option>Trimestral</option>
+            <option>Semestral</option><option>Anual</option><option>Por Demanda</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Área / Equipamento</label>
+          <input type="text" id="mpmp-area" placeholder="Ex: Estação Solarimétrica">
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal('modal-pmp')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePMP()">Salvar Atividade</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL CONFIRM ═══ -->
+<div class="overlay" id="modal-confirm">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr">
+      <h2 id="conf-title">Confirmar exclusão</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-confirm')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px">
+      <p style="font-size:14px;margin-bottom:6px" id="conf-msg">Excluir este registro?</p>
+      <p style="font-size:12px;color:var(--text2)" id="conf-sub">Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-danger" id="conf-ok">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══ MODAL ROÇAGEM ═══ -->
+<div class="overlay" id="modal-rocagem">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-hdr">
+      <h2 id="mrc-title">Novo Planejamento</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-rocagem')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mrc-idx">
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Macroatividade <span class="req">*</span></label>
+          <select id="mrc-tipo">
+            <option value="Roçagem">🌿 Roçagem</option>
+            <option value="Lavagem">💧 Lavagem</option>
+            <option value="Herbicida">🧪 Herbicida</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Usina <span class="req">*</span></label>
+          <input type="text" id="mrc-usina" placeholder="Ex: ARA1" list="dl-usinas-rc">
+          <datalist id="dl-usinas-rc"></datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Data Início <span class="req">*</span></label>
+          <input type="date" id="mrc-inicio">
+        </div>
+        <div class="fgroup">
+          <label>Data Fim</label>
+          <input type="date" id="mrc-fim">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Responsável</label>
+          <input type="text" id="mrc-resp" placeholder="Nome do responsável">
+        </div>
+        <div class="fgroup">
+          <label>Status <span class="req">*</span></label>
+          <select id="mrc-status" onchange="toggleRocagemFields(this.value)">
+            <option>Não iniciada</option>
+            <option>Iniciada</option>
+            <option>Em andamento</option>
+            <option>Paralisada</option>
+            <option>Finalizada</option>
+          </select>
+        </div>
+      </div>
+      <!-- Progresso — visível apenas para "Em andamento" -->
+      <div class="form-row" id="mrc-progress-row" style="display:none">
+        <div class="fgroup">
+          <label>Progresso realizado (%)</label>
+          <input type="number" id="mrc-progresso" placeholder="Ex: 80" min="0" max="100">
+          <span class="hint">Informe o percentual concluído (0–100)</span>
+        </div>
+      </div>
+      <!-- Justificativa — visível para "Não iniciada" e "Paralisada" -->
+      <div class="form-row full" id="mrc-justif-row" style="display:none">
+        <div class="fgroup">
+          <label>Justificativa / Motivo <span class="req">*</span></label>
+          <textarea id="mrc-justif" rows="2" placeholder="Descreva o motivo…" style="resize:vertical;min-height:52px;max-height:120px;overflow-y:auto"></textarea>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="fgroup">
+          <label>Observações</label>
+          <textarea id="mrc-obs" rows="4" placeholder="Notas adicionais…" style="resize:vertical;min-height:72px;max-height:180px;overflow-y:auto;white-space:pre-wrap"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal('modal-rocagem')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRocagem()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL INSPEÇÃO EM ÁREA DE GERAÇÃO ═══ -->
+<div class="overlay" id="modal-insp-area">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-hdr">
+      <h2 id="mia-title">Nova Inspeção em Área de Geração</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-insp-area')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mia-idx">
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Usina <span class="req">*</span></label>
+          <input type="text" id="mia-usina" placeholder="Ex: ARA1" list="dl-usinas-ia">
+          <datalist id="dl-usinas-ia"></datalist>
+        </div>
+        <div class="fgroup">
+          <label>Data <span class="req">*</span></label>
+          <input type="date" id="mia-data">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="fgroup">
+          <label>Inspetor</label>
+          <input type="text" id="mia-inspetor" placeholder="Nome do inspetor responsável">
+        </div>
+      </div>
+      <div class="form-sep">Checklist de Pontos de Inspeção</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fgroup">
+          <label>🌿 Vegetação</label>
+          <select id="mia-veg"><option value="Conforme">Conforme</option><option value="Atenção">Atenção</option><option value="Crítico">Crítico</option><option value="N/A">N/A</option></select>
+        </div>
+        <div class="fgroup">
+          <label>Obs. Vegetação</label>
+          <textarea id="mia-veg-obs" rows="2" placeholder="Observação…" style="resize:vertical;min-height:44px;max-height:120px;overflow-y:auto"></textarea>
+        </div>
+        <div class="fgroup">
+          <label>🔆 Sujidade</label>
+          <select id="mia-suj"><option value="Conforme">Conforme</option><option value="Atenção">Atenção</option><option value="Crítico">Crítico</option><option value="N/A">N/A</option></select>
+        </div>
+        <div class="fgroup">
+          <label>Obs. Sujidade</label>
+          <textarea id="mia-suj-obs" rows="2" placeholder="Observação…" style="resize:vertical;min-height:44px;max-height:120px;overflow-y:auto"></textarea>
+        </div>
+        <div class="fgroup">
+          <label>🐜 Formigueiro/Cupinzeiro</label>
+          <select id="mia-form"><option value="Conforme">Conforme</option><option value="Atenção">Atenção</option><option value="Crítico">Crítico</option><option value="N/A">N/A</option></select>
+        </div>
+        <div class="fgroup">
+          <label>Obs. Formigueiro</label>
+          <textarea id="mia-form-obs" rows="2" placeholder="Observação…" style="resize:vertical;min-height:44px;max-height:120px;overflow-y:auto"></textarea>
+        </div>
+        <div class="fgroup">
+          <label>💧 Drenagem</label>
+          <select id="mia-dren"><option value="Conforme">Conforme</option><option value="Atenção">Atenção</option><option value="Crítico">Crítico</option><option value="N/A">N/A</option></select>
+        </div>
+        <div class="fgroup">
+          <label>Obs. Drenagem</label>
+          <textarea id="mia-dren-obs" rows="2" placeholder="Observação…" style="resize:vertical;min-height:44px;max-height:120px;overflow-y:auto"></textarea>
+        </div>
+        <div class="fgroup">
+          <label>🧪 Avaliação de Herbicida</label>
+          <select id="mia-herb"><option value="Conforme">Conforme</option><option value="Atenção">Atenção</option><option value="Crítico">Crítico</option><option value="N/A">N/A</option></select>
+        </div>
+        <div class="fgroup">
+          <label>Obs. Herbicida</label>
+          <textarea id="mia-herb-obs" rows="2" placeholder="Observação…" style="resize:vertical;min-height:44px;max-height:120px;overflow-y:auto"></textarea>
+        </div>
+      </div>
+      <div class="form-row full" style="margin-top:10px">
+        <div class="fgroup">
+          <label>Observações Gerais</label>
+          <textarea id="mia-obs" rows="4" placeholder="Notas gerais da inspeção…" style="resize:vertical;min-height:80px;max-height:220px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;line-height:1.55;font-size:13px"></textarea>
+          <span class="hint">O texto é exibido com quebra de linha automática e rolagem quando necessário.</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal('modal-insp-area')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveInspArea()">Salvar Inspeção</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL OC ═══ -->
+<div class="overlay" id="modal-oc">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-hdr">
+      <h2 id="moc-title">Nova Ordem de Compra</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-oc')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="moc-idx">
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Solicitado por <span class="req">*</span></label>
+          <input type="text" id="moc-solicitante" placeholder="Ex: JÚLIA ELLEN">
+        </div>
+        <div class="fgroup">
+          <label>Usina <span class="req">*</span></label>
+          <input type="text" id="moc-usina" placeholder="Ex: ARA1" list="dl-usinas-oc">
+          <datalist id="dl-usinas-oc"></datalist>
+        </div>
+      </div>
+      <div class="form-row thirds">
+        <div class="fgroup">
+          <label>Quantidade</label>
+          <input type="number" id="moc-qtd" placeholder="0" min="0">
+        </div>
+        <div class="fgroup">
+          <label>R$ (Valor)</label>
+          <input type="text" id="moc-valor" placeholder="0,00">
+        </div>
+        <div class="fgroup">
+          <label>Prioridade</label>
+          <select id="moc-prioridade">
+            <option value="">—</option>
+            <option>Alta</option><option>Média</option><option>Baixa</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="fgroup">
+          <label>Equipamento <span class="req">*</span></label>
+          <input type="text" id="moc-equip" placeholder="Descrição do equipamento">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Data Inicial</label>
+          <input type="date" id="moc-di">
+        </div>
+        <div class="fgroup">
+          <label>Data Final</label>
+          <input type="date" id="moc-df">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Orçamento</label>
+          <input type="text" id="moc-orcamento" placeholder="Link ou referência">
+        </div>
+        <div class="fgroup">
+          <label>N° da OC</label>
+          <input type="text" id="moc-numero" placeholder="Ex: OC-2026-0001">
+        </div>
+      </div>
+      <div class="form-row thirds">
+        <div class="fgroup">
+          <label>OC Aprovada</label>
+          <select id="moc-aprovada">
+            <option value="">—</option><option>Sim</option><option>Não</option><option>Pendente</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Equip. Entregue</label>
+          <select id="moc-entregue">
+            <option value="">—</option><option>Sim</option><option>Não</option><option>Parcial</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Normalizado em Campo</label>
+          <select id="moc-normalizado">
+            <option value="">—</option><option>Sim</option><option>Não</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fgroup">
+          <label>Status</label>
+          <select id="moc-status">
+            <option value="">—</option>
+            <option>OK</option><option>PENDENTE</option><option>HM ASS</option>
+            <option>CONSULTAR TECNICO</option><option>AGUARDAR ORÇAMENTO</option>
+            <option>HM APROVAR</option><option>FINALIZADO</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal('modal-oc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveOC()">Salvar OC</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL IMPORTAR ═══ -->
+<div class="overlay" id="modal-import">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-hdr">
+      <h2>Importar Dados</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-import')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- tabs -->
+      <div class="import-tabs">
+        <div class="import-tab active" id="itab-os" onclick="switchImportTab('os')">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;display:inline;vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Ordens de Serviço (.xlsx)
+        </div>
+        <div class="import-tab" id="itab-pmp" onclick="switchImportTab('pmp')">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;display:inline;vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Plano de Manutenção (.html)
+        </div>
+      </div>
+
+      <!-- OS IMPORT PANEL -->
+      <div class="import-panel active" id="ipanel-os">
+        <div class="import-zone" id="drop-os"
+          ondragover="handleDragOver(event,'drop-os')"
+          ondragleave="handleDragLeave('drop-os')"
+          ondrop="handleDrop(event,'os')"
+          onclick="document.getElementById('file-os').click()">
+          <input type="file" id="file-os" accept=".xlsx,.xls" onchange="handleFileSelect(event,'os')">
+          <div class="import-zone-icon" style="background:var(--green-l)">
+            <svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#3d3630;stroke-width:1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 18 15 15"/></svg>
+          </div>
+          <h3>Arraste o arquivo aqui ou clique para selecionar</h3>
+          <p>Exportação de Ordens de Serviço — mesmo formato do sistema</p>
+          <span class="ext-badge" style="background:var(--green-l);color:var(--green-d)">.xlsx &nbsp;·&nbsp; .xls</span>
+        </div>
+        <div class="import-progress" id="prog-os">
+          <div class="import-progress-bar"><div class="import-progress-fill" id="prog-os-fill"></div></div>
+          <div class="import-progress-msg" id="prog-os-msg">Lendo arquivo…</div>
+        </div>
+        <div class="import-preview" id="prev-os">
+          <div class="import-preview-hdr">
+            <span id="prev-os-title">Pré-visualização</span>
+            <span id="prev-os-badge" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--green-l);color:var(--green-d)"></span>
+          </div>
+          <div class="import-preview-rows" id="prev-os-rows"></div>
+        </div>
+        <div class="import-result" id="res-os">
+          <p id="res-os-msg"></p>
+          <span id="res-os-sub"></span>
+        </div>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:8px" id="os-import-mode-row" style="display:none">
+          <label style="font-size:12px;font-weight:500;color:var(--text2)">Modo de importação:</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="os-mode" value="replace" checked> Substituir todos os dados atuais
+          </label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="os-mode" value="merge"> Mesclar (adicionar novos, atualizar existentes)
+          </label>
+        </div>
+      </div>
+
+      <!-- PMP IMPORT PANEL -->
+      <div class="import-panel" id="ipanel-pmp">
+        <div class="import-zone" id="drop-pmp"
+          ondragover="handleDragOver(event,'drop-pmp')"
+          ondragleave="handleDragLeave('drop-pmp')"
+          ondrop="handleDrop(event,'pmp')"
+          onclick="document.getElementById('file-pmp').click()">
+          <input type="file" id="file-pmp" accept=".html,.htm" multiple onchange="handleFileSelect(event,'pmp')">
+          <div class="import-zone-icon" style="background:#fff8dc">
+            <svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#4a4138;stroke-width:1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>Arraste os arquivos HTML ou clique para selecionar</h3>
+          <p>Planos de manutenção mensais — aceita múltiplos arquivos de uma vez</p>
+          <span class="ext-badge" style="background:#fff8dc;color:#4a4138">.html &nbsp;·&nbsp; múltiplos arquivos</span>
+        </div>
+        <div class="import-progress" id="prog-pmp">
+          <div class="import-progress-bar"><div class="import-progress-fill" id="prog-pmp-fill"></div></div>
+          <div class="import-progress-msg" id="prog-pmp-msg">Lendo arquivos…</div>
+        </div>
+        <div class="import-preview" id="prev-pmp">
+          <div class="import-preview-hdr">
+            <span id="prev-pmp-title">Pré-visualização</span>
+            <span id="prev-pmp-badge" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff8dc;color:#4a4138"></span>
+          </div>
+          <div class="import-preview-rows" id="prev-pmp-rows"></div>
+        </div>
+        <div class="import-result" id="res-pmp">
+          <p id="res-pmp-msg"></p>
+          <span id="res-pmp-sub"></span>
+        </div>
+        <div style="margin-top:14px" id="pmp-import-mode-row" style="display:none">
+          <label style="font-size:12px;font-weight:500;color:var(--text2)">Modo de importação:</label>
+          <div style="display:flex;gap:12px;margin-top:6px">
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="radio" name="pmp-mode" value="replace" checked> Substituir usinas importadas
+            </label>
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="radio" name="pmp-mode" value="merge"> Mesclar atividades
+            </label>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="resetImport()">Limpar</button>
+      <button class="btn" onclick="closeModal('modal-import')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmImport()" disabled>
+        <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#fff;stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Confirmar Importação
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL EXCLUIR DADOS ═══ -->
+<div class="overlay" id="modal-delete-data">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr">
+      <h2>Excluir dados</h2>
+      <button class="btn btn-sm" onclick="closeModal('modal-delete-data')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="reset-modal-icon">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </div>
+      <p style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:4px">Selecione o que deseja apagar.</p>
+      <p style="text-align:center;font-size:11px;color:var(--text3);margin-bottom:2px">Esta ação não pode ser desfeita.</p>
+      <div class="reset-checklist">
+        <label class="reset-check-item" id="rc-os" onclick="toggleResetCheck('rc-os')">
+          <input type="checkbox" id="chk-os" onclick="event.stopPropagation()">
+          <div class="reset-check-label">
+            <strong>Ordens de Serviço</strong>
+            <span id="rc-os-count">Nenhuma OS cadastrada</span>
+          </div>
+        </label>
+        <label class="reset-check-item" id="rc-pmp" onclick="toggleResetCheck('rc-pmp')">
+          <input type="checkbox" id="chk-pmp" onclick="event.stopPropagation()">
+          <div class="reset-check-label">
+            <strong>Planos de Manutenção (PMP)</strong>
+            <span id="rc-pmp-count">Nenhum plano cadastrado</span>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal('modal-delete-data')">Cancelar</button>
+      <button class="btn btn-reset-confirm" id="btn-do-delete" onclick="doDeleteData()" disabled>
+        <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:#fff;stroke-width:2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        Excluir selecionados
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const STORE_OS  = 'maint_os_v4';
+const STORE_PMP = 'maint_pmp_v4';
+
+const DEFAULT_OS = [];
+const DEFAULT_PMP = {};
+
+function loadStore(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+}
+function saveStore(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+
+let OS  = loadStore(STORE_OS,  DEFAULT_OS);
+let PMP = loadStore(STORE_PMP, DEFAULT_PMP);
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let filteredOS = [];
+let currentPage = 1;
+const PAGE_SIZE = 30;
+let selectedUsina = null;
+let chartsRef = {};
+let selectedRows = new Set(); // indices of selected OS rows
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
+  btn.classList.add('active');
+  document.getElementById('sec-' + name).classList.add('on');
+  if (name === 'pmp') { renderUsinaSelector(); renderPMPDetail(); }
+  if (name === 'cal') buildCalendar();
+  if (name === 'charts') { refreshChartFilters(); buildCharts(); }
+  if (name === 'rocagem') renderRocagem();
+  if (name === 'insp-area') renderInspArea();
+  if (name === 'oc') renderOC();
+}
+
+// ─── METRICS ─────────────────────────────────────────────────────────────────
+// Accepts optional srcOverride so Análise filters can drive the KPI cards too
+function updateMetrics(srcOverride) {
+  const isF = srcOverride ? true : isFiltered();
+  const src  = srcOverride || (isF ? filteredOS : OS);
+
+  const total = src.length;
+  const proc  = src.filter(o => o.status === 'Em processo').length;
+  const verif = src.filter(o => o.status === 'Verificação').length;
+
+  document.getElementById('m-total').textContent = total;
+  document.getElementById('m-proc').textContent  = proc;
+  document.getElementById('m-verif').textContent = verif;
+
+  const totalAll = OS.length;
+  if (isF) {
+    document.getElementById('m-total-sub').textContent = `de ${totalAll} no total`;
+    document.getElementById('m-total-sub').className   = 'mc-sub sub-filtered';
+    document.getElementById('m-proc-sub').textContent  = `de ${OS.filter(o=>o.status==='Em processo').length} no total`;
+    document.getElementById('m-proc-sub').className    = 'mc-sub sub-filtered';
+    document.getElementById('m-verif-sub').textContent = `de ${OS.filter(o=>o.status==='Verificação').length} no total`;
+    document.getElementById('m-verif-sub').className   = 'mc-sub sub-filtered';
+    document.querySelectorAll('.mc').forEach((mc, i) => { if (i < 3) mc.classList.add('mc-filtered'); });
+    const usinasFiltered = [...new Set(src.map(o=>o.usina).filter(Boolean))].length;
+    document.getElementById('m-usinas').textContent     = usinasFiltered;
+    document.getElementById('m-usinas-sub').textContent = `de ${[...new Set(OS.map(o=>o.usina).filter(Boolean))].length} total`;
+    document.getElementById('m-usinas-sub').className   = 'mc-sub sub-filtered';
+  } else {
+    document.getElementById('m-total-sub').textContent = 'ordens cadastradas';
+    document.getElementById('m-total-sub').className   = 'mc-sub';
+    document.getElementById('m-proc-sub').textContent  = 'execução em campo';
+    document.getElementById('m-proc-sub').className    = 'mc-sub';
+    document.getElementById('m-verif-sub').textContent = 'análise Casa Forte';
+    document.getElementById('m-verif-sub').className   = 'mc-sub';
+    document.querySelectorAll('.mc').forEach(mc => mc.classList.remove('mc-filtered'));
+    document.getElementById('m-usinas').textContent     = [...new Set(OS.map(o=>o.usina).filter(Boolean))].length;
+    document.getElementById('m-usinas-sub').textContent = 'usinas com OS';
+    document.getElementById('m-usinas-sub').className   = 'mc-sub';
+  }
+
+  // PMP total never filters (it's the plan, not OS)
+  const pmpTotal = Object.values(PMP).reduce((s,u) => s + u.dias.reduce((ss,d) => ss + d.a.length, 0), 0);
+  document.getElementById('m-pmp').textContent = pmpTotal;
+}
+
+function isFiltered() {
+  const fs  = (document.getElementById('f-search') ? document.getElementById('f-search').value : '').trim();
+  const fu  = document.getElementById('f-usina')  ? document.getElementById('f-usina').value  : '';
+  const fst = document.getElementById('f-status') ? document.getElementById('f-status').value : '';
+  const ft  = document.getElementById('f-tipo')   ? document.getElementById('f-tipo').value   : '';
+  return !!(fs || fu || fst || ft);
+}
+
+// ─── DATALISTS ────────────────────────────────────────────────────────────────
+function refreshDataLists() {
+  const usinas = [...new Set([...OS.map(o => o.usina).filter(Boolean), ...Object.keys(PMP)])].sort();
+  ['dl-usinas','dl-usinas-pmp','dl-usinas-rc','dl-usinas-ia','dl-usinas-oc'].forEach(id => {
+    const dl = document.getElementById(id);
+    if (dl) dl.innerHTML = usinas.map(u => `<option value="${u}">`).join('');
+  });
+  const sel = document.getElementById('f-usina');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas</option>' + usinas.map(u => `<option${cur===u?' selected':''}>${u}</option>`).join('');
+  // OC usina filter
+  const ocSel = document.getElementById('oc-f-usina');
+  if (ocSel) {
+    const curOc = ocSel.value;
+    ocSel.innerHTML = '<option value="">Todas</option>' + usinas.map(u => `<option${curOc===u?' selected':''}>${u}</option>`).join('');
+  }
+  // Inspeção usina filter
+  const iaSel = document.getElementById('insp-f-usina');
+  if (iaSel) {
+    const curIa = iaSel.value;
+    iaSel.innerHTML = '<option value="">Todas</option>' + usinas.map(u => `<option${curIa===u?' selected':''}>${u}</option>`).join('');
+  }
+}
+
+// ─── OS FILTER + RENDER ──────────────────────────────────────────────────────
+function clearFilters() {
+  document.getElementById('f-search').value = '';
+  document.getElementById('f-usina').value  = '';
+  document.getElementById('f-status').value = '';
+  document.getElementById('f-tipo').value   = '';
+  filterOS();
+}
+
+function filterOS() {
+  const fs  = (document.getElementById('f-search').value || '').toLowerCase();
+  const fu  = document.getElementById('f-usina').value;
+  const fst = document.getElementById('f-status').value;
+  const ft  = document.getElementById('f-tipo').value;
+  const TIPOS_PADRAO = ['MC','PMP','INSP'];
+  filteredOS = OS.filter(o => {
+    if (fu  && o.usina  !== fu)  return false;
+    if (fst && o.status !== fst) return false;
+    if (ft) {
+      if (ft === 'OUTROS') {
+        // Mostrar apenas OS cujo tipo NÃO seja MC, PMP ou INSP
+        if (TIPOS_PADRAO.includes(o.tipo)) return false;
+      } else {
+        if (o.tipo !== ft) return false;
+      }
+    }
+    if (fs) {
+      const hay = [o.id,o.tarefa,o.resp,o.ativo,o.usina,o.criado_por].join(' ').toLowerCase();
+      if (!hay.includes(fs)) return false;
+    }
+    return true;
+  });
+  selectedRows.clear();
+  updateBulkBar();
+  const btn = document.getElementById('btn-clear-filters');
+  if (btn) btn.style.display = isFiltered() ? '' : 'none';
+  currentPage = 1;
+  updateMetrics();
+  renderOSPage();
+}
+
+function renderOSPage() {
+  const total  = filteredOS.length;
+  const pages  = Math.ceil(total / PAGE_SIZE) || 1;
+  currentPage  = Math.min(currentPage, pages);
+  const start  = (currentPage - 1) * PAGE_SIZE;
+  const slice  = filteredOS.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('f-count').textContent = isFiltered()
+    ? `${total} resultado${total!==1?'s':''} filtrado${total!==1?'s':''} de ${OS.length}`
+    : `${total} registro${total!==1?'s':''}`;
+
+  const tb = document.getElementById('os-tbody');
+  tb.innerHTML = '';
+  if (!slice.length) {
+    tb.innerHTML = OS.length === 0
+      ? `<tr><td colspan="8"><div class="empty" style="padding:48px 20px">
+          <div style="font-size:32px;margin-bottom:12px">☀️</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Nenhuma ordem de serviço cadastrada</div>
+          <div style="font-size:12px;color:var(--text3);max-width:320px;margin:0 auto">Use <strong>Importar .xlsx</strong> para carregar suas ordens em lote.</div>
+        </div></td></tr>`
+      : `<tr><td colspan="8"><div class="empty">Nenhuma OS encontrada para os filtros selecionados.</div></td></tr>`;
+  } else {
+    slice.forEach(o => {
+      const TIPOS_PADRAO = ['MC','PMP','INSP'];
+      const sbc = o.status === 'Em processo' ? 'b-proc' : 'b-verif';
+      const tbc = o.tipo === 'MC' ? 'b-mc' : o.tipo === 'PMP' ? 'b-pmp' : o.tipo === 'INSP' ? 'b-insp' : 'b-verif';
+      const dt  = (o.data||'').substring(0,10).split('-').reverse().join('/');
+      const ativo = (o.ativo||'').replace(/\s*\{[^}]+\}/g,'').trim().substring(0,30);
+      const tipoLabel = o.tipo || '—';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono">${(o.id||'').substring(0,19)}</td>
+        <td><span class="badge ${sbc}">${o.status}</span></td>
+        <td><span class="utag">${o.usina||'—'}</span></td>
+        <td><span class="badge ${tbc}">${tipoLabel}</span></td>
+        <td style="max-width:260px;font-size:12px">${(o.tarefa||'').substring(0,90)}</td>
+        <td style="font-size:11px;color:var(--text2);max-width:120px">${ativo}</td>
+        <td style="font-size:12px;white-space:nowrap">${dt}</td>
+        <td style="font-size:12px">${(o.resp||'').substring(0,22)}</td>`;
+      tb.appendChild(tr);
+    });
+  }
+  renderPagination(total, pages);
+}
+
+function renderPagination(total, pages) {
+  const pg = document.getElementById('pag');
+  if (pages <= 1) { pg.innerHTML = `<span class="page-info">Total: ${total} registros</span>`; return; }
+  let html = `<span class="page-info">${total} registros · página ${currentPage} de ${pages}</span>`;
+  html += `<button class="page-btn" onclick="goPage(1)" ${currentPage===1?'disabled':''}>«</button>`;
+  html += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  const start = Math.max(1, currentPage-2), end = Math.min(pages, start+4);
+  for (let p = start; p <= end; p++)
+    html += `<button class="page-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}>›</button>`;
+  html += `<button class="page-btn" onclick="goPage(${pages})" ${currentPage===pages?'disabled':''}>»</button>`;
+  pg.innerHTML = html;
+}
+function goPage(p) { currentPage = p; renderOSPage(); }
+
+// ─── OS MODAL ────────────────────────────────────────────────────────────────
+function openOSModal(idx) {
+  document.getElementById('mos-title').textContent = idx !== undefined ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço';
+  document.getElementById('mos-idx').value = idx !== undefined ? idx : '';
+  const o = idx !== undefined ? OS[idx] : {};
+  document.getElementById('mos-id').value     = o.id || '';
+  document.getElementById('mos-data').value   = o.data || new Date().toISOString().replace('T',' ').substring(0,16);
+  document.getElementById('mos-usina').value  = o.usina || '';
+  document.getElementById('mos-status').value = o.status || 'Em processo';
+  document.getElementById('mos-tipo').value   = o.tipo || 'MC';
+  document.getElementById('mos-tarefa').value = o.tarefa || '';
+  document.getElementById('mos-ativo').value  = o.ativo || '';
+  document.getElementById('mos-resp').value   = o.resp || '';
+  document.getElementById('mos-criado').value = o.criado_por || '';
+  openModal('modal-os');
+}
+
+function saveOS() {
+  const id    = document.getElementById('mos-id').value.trim();
+  const usina = document.getElementById('mos-usina').value.trim();
+  const tarefa= document.getElementById('mos-tarefa').value.trim();
+  const resp  = document.getElementById('mos-resp').value.trim();
+  const data  = document.getElementById('mos-data').value.trim();
+  if (!id || !usina || !tarefa || !resp || !data) { showToast('Preencha os campos obrigatórios.', true); return; }
+  const obj = {
+    id, status: document.getElementById('mos-status').value,
+    ativo:  document.getElementById('mos-ativo').value.trim(),
+    tarefa, data, resp,
+    criado_por: document.getElementById('mos-criado').value.trim(),
+    usina, tipo: document.getElementById('mos-tipo').value,
+  };
+  const editIdx = document.getElementById('mos-idx').value;
+  if (editIdx !== '') { OS[parseInt(editIdx)] = obj; showToast('OS atualizada.'); }
+  else {
+    if (OS.find(o => o.id === id)) { showToast('Já existe uma OS com este ID.', true); return; }
+    OS.unshift(obj); showToast('OS cadastrada.');
+  }
+  saveStore(STORE_OS, OS);
+  closeModal('modal-os');
+  refreshDataLists(); filterOS();
+  if (Object.keys(chartsRef).length) buildCharts();
+}
+
+function confirmDeleteOS(idx) {
+  const o = OS[idx];
+  document.getElementById('conf-title').textContent = 'Confirmar exclusão';
+  document.getElementById('conf-msg').textContent = `Excluir OS "${o.id}"?`;
+  document.getElementById('conf-sub').textContent = `${o.usina} · ${(o.tarefa||'').substring(0,60)}`;
+  document.getElementById('conf-ok').onclick = () => { OS.splice(idx,1); saveStore(STORE_OS,OS); closeModal('modal-confirm'); refreshDataLists(); filterOS(); if(Object.keys(chartsRef).length) buildCharts(); showToast('OS excluída.'); };
+  openModal('modal-confirm');
+}
+
+// ─── PMP ─────────────────────────────────────────────────────────────────────
+function recalcTotal(u) { if(PMP[u]) PMP[u].total = PMP[u].dias.reduce((s,d)=>s+d.a.length,0); }
+
+function renderUsinaSelector() {
+  const grid = document.getElementById('usina-sel');
+  grid.innerHTML = '';
+  const maxActs = Math.max(...Object.values(PMP).map(u => u.total), 1);
+  Object.entries(PMP).forEach(([name, info]) => {
+    const div = document.createElement('div');
+    const isSel = selectedUsina === name;
+    div.className = 'ucard' + (isSel ? ' sel' : '');
+    div.innerHTML = `<div class="ucard-name">${name}</div>
+      <div class="ucard-stats">${info.total} atividades · ${info.dias.length} dias</div>
+      <div class="pbar"><div class="pbar-f" style="width:${Math.round(info.total/maxActs*100)}%"></div></div>`;
+    div.onclick = () => {
+      if (selectedUsina === name) {
+        // Toggle: recolhe se já estava aberto
+        selectedUsina = null;
+      } else {
+        selectedUsina = name;
+      }
+      renderUsinaSelector();
+      renderPMPDetail();
+    };
+    grid.appendChild(div);
+  });
+}
+
+function renderPMPDetail() {
+  const el = document.getElementById('pmp-detail');
+  if (!selectedUsina || !PMP[selectedUsina]) { el.innerHTML = '<div class="select-hint">↑ Selecione uma usina acima</div>'; return; }
+  const { total, dias, month } = PMP[selectedUsina];
+  let html = `<div class="pmp-wrap">
+    <div class="pmp-hdr">
+      <span>📋 PMP — ${selectedUsina} · ${month||'Maio/2026'} · ${total} atividades</span>
+    </div>`;
+  dias.forEach((d, di) => {
+    html += `<div class="pmp-row"><div class="pmp-date">📅 ${d.d}</div><div class="pmp-acts">`;
+    d.a.forEach((a, ai) => {
+      html += `<div class="pmp-act-row">
+        <div class="pmp-act-text">${a}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function openPMPModal(preUsina) {
+  document.getElementById('mpmp-title').textContent = 'Nova Atividade de Manutenção';
+  document.getElementById('mpmp-usina-orig').value = '';
+  document.getElementById('mpmp-dia-idx').value = '';
+  document.getElementById('mpmp-at-idx').value  = '';
+  document.getElementById('mpmp-usina').value   = preUsina || selectedUsina || '';
+  document.getElementById('mpmp-data').value    = '';
+  document.getElementById('mpmp-ativ').value    = '';
+  document.getElementById('mpmp-freq').value    = '';
+  document.getElementById('mpmp-area').value    = '';
+  openModal('modal-pmp');
+}
+
+// ─── DOWNLOAD PMP ─────────────────────────────────────────────────────────────
+function downloadPMP() {
+  if (!Object.keys(PMP).length) { showToast('Nenhum plano de manutenção cadastrado.', true); return; }
+  // Generate one HTML file per usina in the same format parsePMPHtml expects
+  Object.entries(PMP).forEach(([usina, info]) => {
+    const { dias, month, total } = info;
+    const tableRows = dias.map(d => {
+      const actsHtml = d.a.map(a =>
+        `<div class="atividade-item">• ${a}</div>`
+      ).join('\n');
+      return `<tr>
+        <td>${d.d}/2026</td>
+        <td>${actsHtml}</td>
+        <td>${d.a.length}</td>
+      </tr>`;
+    }).join('\n');
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Plano de Manutenção — ${usina}</title>
+<style>
+  body{font-family:sans-serif;padding:20px}
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid #ccc;padding:8px 10px;vertical-align:top}
+  th{background:#FFCA0A;font-size:12px}
+  .atividade-item{font-size:12px;margin-bottom:3px}
+</style>
+</head>
+<body>
+<h1>Plano de Manutenção — ${usina}</h1>
+<h2>📅 ${month || 'Maio/2026'}</h2>
+<p>${total} atividades planejadas</p>
+<table>
+  <thead><tr><th>Data</th><th>Atividades</th><th>Qtd</th></tr></thead>
+  <tbody>
+${tableRows}
+  </tbody>
+</table>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `plano_de_manutencao_${usina.replace(/[^a-zA-Z0-9]/g,'_')}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  const n = Object.keys(PMP).length;
+  showToast(`${n} arquivo${n!==1?'s':''} PMP baixado${n!==1?'s':''}.`);
+}
+
+function editPMPAt(usina, di, ai) {
+  const d = PMP[usina].dias[di];
+  document.getElementById('mpmp-title').textContent = 'Editar Atividade';
+  document.getElementById('mpmp-usina-orig').value  = usina;
+  document.getElementById('mpmp-dia-idx').value     = di;
+  document.getElementById('mpmp-at-idx').value      = ai;
+  document.getElementById('mpmp-usina').value       = usina;
+  document.getElementById('mpmp-data').value        = d.d;
+  document.getElementById('mpmp-ativ').value        = d.a[ai];
+  document.getElementById('mpmp-freq').value        = '';
+  document.getElementById('mpmp-area').value        = '';
+  openModal('modal-pmp');
+}
+
+function savePMP() {
+  const usina = document.getElementById('mpmp-usina').value.trim();
+  const data  = document.getElementById('mpmp-data').value.trim();
+  const ativ  = document.getElementById('mpmp-ativ').value.trim();
+  if (!usina || !data || !ativ) { showToast('Preencha usina, data e atividade.', true); return; }
+  if (!/^\d{2}\/\d{2}$/.test(data)) { showToast('Data deve ser DD/MM (ex: 18/05).', true); return; }
+  const origUsina = document.getElementById('mpmp-usina-orig').value;
+  const di = document.getElementById('mpmp-dia-idx').value;
+  const ai = document.getElementById('mpmp-at-idx').value;
+  if (origUsina && di !== '' && ai !== '') {
+    const oldDia = PMP[origUsina].dias[+di];
+    oldDia.a.splice(+ai, 1);
+    if (!oldDia.a.length) PMP[origUsina].dias.splice(+di, 1);
+    recalcTotal(origUsina);
+    if (!PMP[origUsina].dias.length) delete PMP[origUsina];
+    showToast('Atividade atualizada.');
+  } else { showToast('Atividade adicionada.'); }
+  insertPMPAt(usina, data, ativ);
+  saveStore(STORE_PMP, PMP);
+  closeModal('modal-pmp');
+  selectedUsina = usina;
+  renderUsinaSelector(); renderPMPDetail(); updateMetrics(); refreshDataLists();
+  if (Object.keys(chartsRef).length) buildCharts();
+}
+
+function insertPMPAt(usina, data, ativ) {
+  if (!PMP[usina]) PMP[usina] = { total: 0, dias: [], month: 'Maio/2026' };
+  const existing = PMP[usina].dias.find(d => d.d === data);
+  if (existing) { existing.a.push(ativ); }
+  else {
+    PMP[usina].dias.push({ d: data, a: [ativ] });
+    PMP[usina].dias.sort((a,b) => {
+      const [ad,am] = a.d.split('/').map(Number), [bd,bm] = b.d.split('/').map(Number);
+      return am!==bm ? am-bm : ad-bd;
+    });
+  }
+  recalcTotal(usina);
+}
+
+function confirmDeletePMP(usina, di, ai) {
+  const a = PMP[usina].dias[di].a[ai];
+  document.getElementById('conf-msg').textContent = `Excluir atividade do plano de ${usina}?`;
+  document.getElementById('conf-sub').textContent = a.substring(0,80);
+  document.getElementById('conf-ok').onclick = () => {
+    PMP[usina].dias[di].a.splice(ai,1);
+    if (!PMP[usina].dias[di].a.length) PMP[usina].dias.splice(di,1);
+    if (!PMP[usina].dias.length) delete PMP[usina];
+    recalcTotal(usina);
+    saveStore(STORE_PMP,PMP);
+    closeModal('modal-confirm');
+    renderUsinaSelector(); renderPMPDetail(); updateMetrics();
+    if (Object.keys(chartsRef).length) buildCharts();
+    showToast('Atividade excluída.');
+  };
+  openModal('modal-confirm');
+}
+
+// ─── CALENDÁRIO ───────────────────────────────────────────────────────────────
+let calOpenDay = null; // tracks which day is currently expanded (toggle state)
+
+function buildCalendar() {
+  const pmpByDay = {};
+  Object.entries(PMP).forEach(([usina, u]) => u.dias.forEach(d => {
+    const day = parseInt(d.d.split('/')[0]);
+    if (!pmpByDay[day]) pmpByDay[day] = [];
+    d.a.forEach(a => pmpByDay[day].push({ atividade: a, usina }));
+  }));
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d => {
+    const h = document.createElement('div'); h.className='cal-hdr'; h.textContent=d; grid.appendChild(h);
+  });
+  const fd = new Date(2026,4,1).getDay();
+  for (let i=0;i<fd;i++) { const e=document.createElement('div'); e.className='cal-day empty'; grid.appendChild(e); }
+  for (let day=1;day<=31;day++) {
+    const hp = pmpByDay[day]&&pmpByDay[day].length;
+    const div = document.createElement('div');
+    const isToday = day===new Date().getDate()&&new Date().getMonth()===4&&new Date().getFullYear()===2026;
+    div.className = 'cal-day' + (hp?' has-ev':'') + (isToday?' today':'') + (calOpenDay===day?' cal-day-open':'');
+    div.dataset.day = day;
+    let dots='<div class="cal-dots">';
+    if (hp) {
+      const maxDots = Math.min(hp, 5);
+      for(let i=0;i<maxDots;i++) dots+=`<div class="cal-dot" style="background:#FFCA0A"></div>`;
+    }
+    dots+='</div>';
+    div.innerHTML=`<div class="cal-dn">${day}</div>${dots}`;
+    div.onclick=()=>toggleCalDetail(day, pmpByDay[day]||[]);
+    grid.appendChild(div);
+  }
+}
+
+function toggleCalDetail(day, pmpActs) {
+  const el = document.getElementById('cal-detail');
+  // Toggle: close if same day clicked again
+  if (calOpenDay === day) {
+    calOpenDay = null;
+    el.innerHTML = `<div style="color:var(--text3);font-size:12px">Clique em um dia para ver as atividades do plano de manutenção preventiva.</div>`;
+    // Remove open highlight from all days
+    document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('cal-day-open'));
+    return;
+  }
+  calOpenDay = day;
+  // Update open highlight
+  document.querySelectorAll('.cal-day').forEach(d => {
+    d.classList.toggle('cal-day-open', parseInt(d.dataset.day) === day);
+  });
+  const total = pmpActs.length;
+  // Use dark Fendi color (#3d3630) for task text — legible on white background
+  let html=`<div class="cal-detail-title">📅 ${String(day).padStart(2,'0')}/05/2026 — ${total} atividade${total!==1?'s':''} PMP
+    <button onclick="calOpenDay=null;document.getElementById('cal-detail').innerHTML='<div style=\\'color:var(--text3);font-size:12px\\'>Clique em um dia para ver as atividades.</div>';document.querySelectorAll(\\'.cal-day\\').forEach(d=>d.classList.remove(\\'cal-day-open\\'));" 
+    style="float:right;font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;color:var(--text2)">✕ Fechar</button>
+  </div><div class="cal-detail-items">`;
+  pmpActs.forEach(item => html+=`
+    <div class="cal-detail-item">
+      <span style="font-size:10px;background:var(--blue-l);color:#7a5c00;padding:1px 6px;border-radius:3px;font-weight:700;margin-right:5px;flex-shrink:0">${item.usina}</span>
+      <span style="color:#3d3630;font-size:12px">${item.atividade}</span>
+    </div>`);
+  if (!total) html+=`<div style="color:var(--text3);font-size:12px">Sem atividades PMP registradas neste dia.</div>`;
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ─── CHARTS ───────────────────────────────────────────────────────────────────
+function refreshChartFilters() {
+  const usinas = [...new Set(OS.map(o => o.usina).filter(Boolean))].sort();
+  const sel = document.getElementById('ch-f-usina');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas</option>' + usinas.map(u => `<option${cur===u?' selected':''}>${u}</option>`).join('');
+}
+
+function clearChartFilters() {
+  const su = document.getElementById('ch-f-usina');
+  const ss = document.getElementById('ch-f-search');
+  if (su) su.value = '';
+  if (ss) ss.value = '';
+  buildCharts();
+}
+
+function getFilteredOSForCharts() {
+  const fu = (document.getElementById('ch-f-usina') ? document.getElementById('ch-f-usina').value : '');
+  const fs = (document.getElementById('ch-f-search') ? document.getElementById('ch-f-search').value : '').toLowerCase();
+  return OS.filter(o => {
+    if (fu && o.usina !== fu) return false;
+    if (fs) {
+      const hay = [o.id, o.tarefa, o.ativo, o.usina, o.resp].join(' ').toLowerCase();
+      if (!hay.includes(fs)) return false;
+    }
+    return true;
+  });
+}
+
+function buildCharts() {
+  Object.values(chartsRef).forEach(c => c.destroy());
+  chartsRef = {};
+
+  const src = getFilteredOSForCharts();
+  const fu  = document.getElementById('ch-f-usina')  ? document.getElementById('ch-f-usina').value  : '';
+  const fs  = document.getElementById('ch-f-search') ? document.getElementById('ch-f-search').value : '';
+  const isChartFiltered = !!(fu || fs);
+
+  const countEl = document.getElementById('ch-f-count');
+  if (countEl) countEl.textContent = isChartFiltered ? `${src.length} de ${OS.length} OS` : `${OS.length} OS`;
+
+  // Drive KPI cards from chart filters when on Análise tab
+  if (isChartFiltered) {
+    updateMetrics(src);
+  } else {
+    // Restore to OS-tab filter state
+    updateMetrics();
+  }
+
+  const emP = src.filter(o=>o.status==='Em processo').length;
+  const emV = src.filter(o=>o.status==='Verificação').length;
+  chartsRef['st'] = new Chart(document.getElementById('ch-status'),{
+    type:'doughnut',
+    data:{labels:['Em processo','Em verificação'],datasets:[{data:[emP,emV],backgroundColor:['#FFCA0A','#7a6e60'],borderColor:'#fff',borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+  });
+  document.getElementById('leg-status').innerHTML=
+    `<div class="chart-leg-i"><div class="chart-leg-sq" style="background:#FFCA0A"></div>Em processo — ${emP}</div>
+     <div class="chart-leg-i"><div class="chart-leg-sq" style="background:#7a6e60"></div>Em verificação — ${emV}</div>`;
+
+  const mc   = src.filter(o=>o.tipo==='MC').length;
+  const pmp  = src.filter(o=>o.tipo==='PMP').length;
+  const insp = src.filter(o=>o.tipo==='INSP').length;
+  const outros = src.filter(o=>o.tipo && !['MC','PMP','INSP'].includes(o.tipo)).length;
+  const semTipo = src.filter(o=>!o.tipo).length;
+  const outrosTotal = outros + semTipo;
+
+  // Only include "Outros" in chart if there are records to show
+  const tipoLabels = ['Corretiva (MC)','Preventiva (PMP)','Inspeção (INSP)'];
+  const tipoData   = [mc, pmp, insp];
+  const tipoBg     = ['#7a7000','#FFCA0A','#6b6358'];
+  if (outrosTotal > 0) {
+    tipoLabels.push('Outros');
+    tipoData.push(outrosTotal);
+    tipoBg.push('#b0a090');
+  }
+
+  chartsRef['tp'] = new Chart(document.getElementById('ch-tipos'),{
+    type:'doughnut',
+    data:{labels:tipoLabels,datasets:[{data:tipoData,backgroundColor:tipoBg,borderColor:'#fff',borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+  });
+  let legTipos =
+    `<div class="chart-leg-i"><div class="chart-leg-sq" style="background:#7a7000"></div>Corretiva — ${mc}</div>
+     <div class="chart-leg-i"><div class="chart-leg-sq" style="background:#FFCA0A"></div>Preventiva — ${pmp}</div>
+     <div class="chart-leg-i"><div class="chart-leg-sq" style="background:#6b6358"></div>Inspeção — ${insp}</div>`;
+  if (outrosTotal > 0) {
+    legTipos += `<div class="chart-leg-i"><div class="chart-leg-sq" style="background:#b0a090"></div>Outros — ${outrosTotal}</div>`;
+  }
+  document.getElementById('leg-tipos').innerHTML = legTipos;
+
+  const uc={};
+  src.forEach(o=>{uc[o.usina]=uc[o.usina]||{p:0,v:0};uc[o.usina][o.status==='Em processo'?'p':'v']++;});
+  const sorted=Object.entries(uc).sort((a,b)=>(b[1].p+b[1].v)-(a[1].p+a[1].v)).slice(0,16);
+  chartsRef['us'] = new Chart(document.getElementById('ch-usinas'),{
+    type:'bar',
+    data:{labels:sorted.map(s=>s[0]),datasets:[
+      {label:'Em processo',data:sorted.map(s=>s[1].p),backgroundColor:'#FFCA0A',borderRadius:3},
+      {label:'Verificação', data:sorted.map(s=>s[1].v),backgroundColor:'#7a6e60',borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:12},padding:14}}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,ticks:{font:{size:11}}}}}
+  });
+
+  const pmpDC={};
+  Object.values(PMP).forEach(u=>u.dias.forEach(d=>{const day=parseInt(d.d.split('/')[0]);pmpDC[day]=(pmpDC[day]||0)+d.a.length;}));
+  const days=Array.from({length:31},(_,i)=>i+1);
+  chartsRef['pm'] = new Chart(document.getElementById('ch-pmp'),{
+    type:'bar',
+    data:{labels:days.map(d=>String(d).padStart(2,'0')+'/05'),datasets:[{label:'Atividades PMP',data:days.map(d=>pmpDC[d]||0),backgroundColor:'#FFCA0A',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},maxRotation:45,autoSkip:false}},y:{ticks:{font:{size:11}}}}}
+  });
+}
+
+// ─── MODAL HELPERS ────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) closeModal(o.id); }));
+document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(o=>closeModal(o.id)); });
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, isErr) {
+  const t=document.getElementById('toast');
+  t.textContent=(isErr?'⚠ ':'✓ ')+msg;
+  t.style.background=isErr?'#a32d2d':'#1a1a18';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ─── IMPORT LOGIC ────────────────────────────────────────────────────────────
+let importActiveTab = 'os';
+let importParsedOS  = null;   // parsed OS records ready to commit
+let importParsedPMP = null;   // parsed PMP object ready to commit
+
+function openImportModal(tab) {
+  resetImport();
+  switchImportTab(tab || 'os');
+  openModal('modal-import');
+}
+
+function switchImportTab(tab) {
+  importActiveTab = tab;
+  document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.import-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('itab-' + tab).classList.add('active');
+  document.getElementById('ipanel-' + tab).classList.add('active');
+  document.getElementById('btn-confirm-import').disabled = true;
+}
+
+function resetImport() {
+  importParsedOS  = null;
+  importParsedPMP = null;
+  // OS panel
+  ['prog-os','prev-os','res-os','os-import-mode-row'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  document.getElementById('prog-os-fill').style.width = '0';
+  document.getElementById('prev-os-rows').innerHTML = '';
+  document.getElementById('file-os').value = '';
+  document.getElementById('drop-os').classList.remove('drag');
+  // PMP panel
+  ['prog-pmp','prev-pmp','res-pmp','pmp-import-mode-row'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  document.getElementById('prog-pmp-fill').style.width = '0';
+  document.getElementById('prev-pmp-rows').innerHTML = '';
+  document.getElementById('file-pmp').value = '';
+  document.getElementById('drop-pmp').classList.remove('drag');
+  document.getElementById('btn-confirm-import').disabled = true;
+}
+
+// ── Drag and drop
+function handleDragOver(e, zoneId) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById(zoneId).classList.add('drag');
+}
+function handleDragLeave(zoneId) {
+  document.getElementById(zoneId).classList.remove('drag');
+}
+function handleDrop(e, type) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('drop-' + type).classList.remove('drag');
+  const files = e.dataTransfer.files;
+  if (!files.length) return;
+  processFiles(files, type);
+}
+function handleFileSelect(e, type) {
+  processFiles(e.target.files, type);
+}
+
+function processFiles(files, type) {
+  if (type === 'os')  parseXLSX(files[0]);
+  if (type === 'pmp') parsePMPFiles(Array.from(files));
+}
+
+// ── XLSX Parser ──────────────────────────────────────────────────────────────
+function parseXLSX(file) {
+  if (!file) return;
+  setProgress('os', 10, 'Lendo arquivo Excel…');
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      setProgress('os', 40, 'Processando planilha…');
+      const data = new Uint8Array(e.target.result);
+      const wb   = XLSX.read(data, { type: 'array' });
+      // Tenta a aba "Dados" primeiro (formato CFE), depois a primeira aba
+      const sheetName = wb.SheetNames.includes('Dados') ? 'Dados' : wb.SheetNames[0];
+      const ws   = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      setProgress('os', 70, 'Mapeando colunas…');
+
+      const sampleRow = rows[0] || {};
+      const keys = Object.keys(sampleRow);
+
+      // ── Mapeamento compatível com exportação real do sistema CFE ──────────
+      const colMap = {
+        id:         findCol(keys, ['OSs ID','OS ID','id','ID']),
+        status:     findCol(keys, ['Status','status','STATUS']),
+        // Nome limpo do ativo (coluna "Ativo", não o código)
+        ativo:      findCol(keys, ['Ativo','ativo','ATIVO','Equipamento']),
+        // Código técnico do ativo ex.: UFV.BJS1.GERA.INV05
+        codigo:     findCol(keys, ['Código','Codigo','CÓDIGO','Código do Ativo','codigo']),
+        tarefa:     findCol(keys, ['Tarefa','tarefa','TAREFA','Descrição','Descricao']),
+        // Tipo de tarefa textual ex.: "Manutenção Corretiva", "Inspeção", "Garantia"
+        tipo_txt:   findCol(keys, ['Tipo de tarefa','Tipo de Tarefa','TIPO DE TAREFA','tipo_tarefa']),
+        // Datas — preferência: Data inicial > Data Programada > Data de Criação da OS
+        data_ini:   findCol(keys, ['Data inicial','Data Inicial','DATA INICIAL']),
+        data_prog:  findCol(keys, ['Data Programada','Data programada','DATA PROGRAMADA']),
+        data_cria:  findCol(keys, ['Data de Criação da OS','Data Criação','Data','data','DATA']),
+        resp:       findCol(keys, ['Responsável','Responsavel','resp','RESPONSÁVEL']),
+        criado_por: findCol(keys, ['Criado por','Criado Por','criado_por','Criador']),
+      };
+
+      const parsed = [];
+      rows.forEach(row => {
+        const id = String(row[colMap.id] || '').trim();
+        if (!id) return; // pula linhas sem ID
+
+        const tarefa   = String(row[colMap.tarefa]   || '').trim();
+        const codigo   = String(row[colMap.codigo]   || '').trim();
+        const tipoTxt  = String(row[colMap.tipo_txt] || '').trim();
+        const statusRaw= String(row[colMap.status]   || '').trim();
+        const resp     = String(row[colMap.resp]      || '').trim();
+        const criadoPor= String(row[colMap.criado_por]|| '').trim();
+
+        // ── Ativo: preferir coluna "Ativo" com limpeza do sufixo { CODIGO } ──
+        let ativo = String(row[colMap.ativo] || '').trim();
+        // Remove o trecho "{ UFV.XXX.YYY }" que o sistema adiciona ao final
+        ativo = ativo.replace(/\s*\{[^}]+\}\s*$/, '').trim();
+
+        // ── Data: Data inicial > Data Programada > Data de Criação da OS ─────
+        const rawDataIni  = String(row[colMap.data_ini]  || '').trim();
+        const rawDataProg = String(row[colMap.data_prog] || '').trim();
+        const rawDataCria = String(row[colMap.data_cria] || '').trim();
+        const rawData = rawDataIni || rawDataProg || rawDataCria;
+        const data = formatDate(rawData);
+
+        // ── Status: normaliza variantes do sistema ────────────────────────────
+        // O sistema exporta "Em processo", "Verificação", "Finalizados" entre outros
+        const status = normalizeStatus(statusRaw);
+
+        // ── Usina: extrai de [XXX] na tarefa ou do código UFV.XXX.YYY ─────────
+        const usina = extractUsina(tarefa, codigo);
+
+        // ── Tipo: lê coluna "Tipo de tarefa" + sigla na tarefa ────────────────
+        const tipo = extractTipo(tarefa, tipoTxt);
+
+        parsed.push({ id, status, ativo, tarefa, data, resp, criado_por: criadoPor, usina, tipo });
+      });
+
+      setProgress('os', 100, 'Concluído!');
+      importParsedOS = parsed;
+      showPreviewOS(parsed);
+      document.getElementById('btn-confirm-import').disabled = false;
+    } catch(err) {
+      showResultError('os', 'Erro ao ler o arquivo: ' + err.message);
+      setProgress('os', 0, '');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Busca flexível de coluna por lista de candidatos (case-insensitive, trim) ─
+function findCol(keys, candidates) {
+  for (const c of candidates) {
+    const found = keys.find(k => k.trim().toLowerCase() === c.trim().toLowerCase());
+    if (found) return found;
+  }
+  return candidates[0]; // fallback sem match
+}
+
+// ── Normaliza datas vindas do sistema (ex: "2026-05-29 17:05" ou serial Excel) ─
+function formatDate(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  // Já está em formato AAAA-MM-DD (com ou sem hora)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+  // Formato DD/MM/AAAA
+  const dmy = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+  // Número serial do Excel (dias desde 1/1/1900)
+  const n = parseFloat(s);
+  if (!isNaN(n) && n > 40000) {
+    const d = new Date(Math.round((n - 25569) * 86400 * 1000));
+    return d.toISOString().substring(0, 10);
+  }
+  return s.substring(0, 10);
+}
+
+// ── Normaliza status: mapeia variantes do sistema para os dois usados no dash ──
+function normalizeStatus(raw) {
+  const s = (raw || '').trim().toLowerCase();
+  if (s === 'verificação' || s === 'verificacao') return 'Verificação';
+  // "Finalizados", "Em progresso", "Não Iniciada", etc. → Em processo (ainda visíveis)
+  return 'Em processo';
+}
+
+// ── Extrai código de usina: [XXX] na tarefa OU segmento UFV.XXX. do código ────
+function extractUsina(tarefa, codigo) {
+  // 1ª prioridade: colchetes no início da tarefa — ex: "[BJS1] MC - ..."
+  const mTarefa = String(tarefa).match(/^\[([A-Z0-9]+)\]/i);
+  if (mTarefa) return mTarefa[1].toUpperCase();
+
+  // 2ª prioridade: código do ativo — ex: "UFV.BJS1.GERA.INV05" → "BJS1"
+  //   Formato: prefixo (UFV|CF).segmento_usina.restante
+  const mCodigo = String(codigo).match(/^(?:UFV|CF)\.\d*([A-Z]{2,5}\d{0,2})\./i);
+  if (mCodigo) return mCodigo[1].toUpperCase();
+
+  // Fallback: segundo segmento separado por ponto
+  const partes = String(codigo).split('.');
+  if (partes.length >= 2) {
+    const seg = partes[1].replace(/\d+$/, '') + partes[1].replace(/\D/g, '');
+    // Se parecer código de usina (letras + dígito), retorna
+    if (/^[A-Z]{2,5}\d{1,2}$/i.test(partes[1])) return partes[1].toUpperCase();
+  }
+  return '';
+}
+
+// ── Classifica tipo da OS lendo coluna "Tipo de tarefa" e sigla na tarefa ─────
+function extractTipo(tarefa, tipoTxt) {
+  const t  = String(tarefa).toUpperCase();
+  const tt = String(tipoTxt).toUpperCase();
+
+  // Siglas explícitas na tarefa têm prioridade máxima
+  if (/\bMC\s*-/.test(t) || /\]\s*MC\s/.test(t))   return 'MC';
+  if (/\bPMP\s*-/.test(t) || /\]\s*PMP\s/.test(t)) return 'PMP';
+  if (/\bINSP\s*-/.test(t) || /\]\s*INSP\s/.test(t)) return 'INSP';
+
+  // Lê coluna "Tipo de tarefa" do sistema
+  if (tt.includes('CORRETIVA'))  return 'MC';
+  if (tt.includes('PREVENTIVA')) return 'PMP';
+  if (tt.includes('INSPEÇÃO') || tt.includes('INSPECAO')) return 'INSP';
+
+  // Palavras na tarefa como fallback
+  if (t.includes('CORRETIVA') || t.includes('GARANTIA')) return 'MC';
+  if (t.includes('PREVENTIVA')) return 'PMP';
+  if (t.includes('INSPE'))      return 'INSP';
+
+  // Qualquer outro tipo (Monitoramento, Garantia sem MC, etc.) → Outros
+  return 'Outros';
+}
+
+function showPreviewOS(rows) {
+  const total = rows.length;
+  const proc  = rows.filter(r => r.status === 'Em processo').length;
+  const verif = rows.filter(r => r.status === 'Verificação').length;
+  document.getElementById('prev-os-title').textContent = `${total} registros encontrados`;
+  document.getElementById('prev-os-badge').textContent = `${proc} em processo · ${verif} em verificação`;
+  const container = document.getElementById('prev-os-rows');
+  container.innerHTML = rows.slice(0, 8).map(r => {
+    const sbc = r.status === 'Em processo' ? 'b-proc' : 'b-verif';
+    const tbc = r.tipo === 'MC' ? 'b-mc' : r.tipo === 'PMP' ? 'b-pmp' : r.tipo === 'INSP' ? 'b-insp' : 'b-verif';
+    return `<div class="import-preview-row">
+      <span class="badge ${sbc}" style="font-size:10px;flex-shrink:0">${r.status}</span>
+      <span class="utag" style="flex-shrink:0">${r.usina||'—'}</span>
+      <span class="badge ${tbc}" style="font-size:10px;flex-shrink:0">${r.tipo}</span>
+      <span style="color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.tarefa.substring(0,70)}</span>
+    </div>`;
+  }).join('') + (total > 8 ? `<div style="text-align:center;padding:6px 0;font-size:11px;color:var(--text3)">… e mais ${total-8} registros</div>` : '');
+
+  document.getElementById('prev-os').style.display     = 'block';
+  document.getElementById('os-import-mode-row').style.display = 'flex';
+  document.getElementById('prog-os').style.display     = 'none';
+}
+
+// ── HTML PMP Parser ──────────────────────────────────────────────────────────
+async function parsePMPFiles(files) {
+  if (!files.length) return;
+  setProgress('pmp', 5, `Lendo ${files.length} arquivo(s) HTML…`);
+  const results = {};
+  let done = 0;
+
+  for (const file of files) {
+    try {
+      const text = await file.text();
+      const parsed = parsePMPHtml(text, file.name);
+      if (parsed) {
+        results[parsed.usina] = parsed.data;
+      }
+    } catch(e) { /* skip bad file */ }
+    done++;
+    setProgress('pmp', Math.round(done / files.length * 90), `Processado ${done} de ${files.length}…`);
+  }
+
+  setProgress('pmp', 100, 'Concluído!');
+  importParsedPMP = results;
+  showPreviewPMP(results);
+  document.getElementById('btn-confirm-import').disabled = Object.keys(results).length === 0;
+}
+
+function parsePMPHtml(html, filename) {
+  const parser = new DOMParser();
+  const doc    = parser.parseFromString(html, 'text/html');
+
+  // Extract usina name from <h1>
+  const h1 = doc.querySelector('h1');
+  let usina = '';
+  if (h1) {
+    const m = h1.textContent.match(/Plano de Manuten[çc][ãa]o\s*[-–]\s*(.+)/i);
+    if (m) usina = m[1].trim().replace(/📊\s*/,'').replace(/\s+/g,' ');
+  }
+  if (!usina) {
+    // fallback: extract from filename
+    const fm = filename.match(/plano_de_manutencao_(.+?)(?:_\(\d+\))?\.html?$/i);
+    if (fm) usina = fm[1].replace(/_/g,',').replace(/,,/g,',');
+  }
+  if (!usina) return null;
+
+  // Extract month from <h2>
+  const h2s = doc.querySelectorAll('h2');
+  let month = 'Maio/2026';
+  h2s.forEach(h => { if (/\d{4}/.test(h.textContent)) month = h.textContent.trim().replace(/📅\s*/,''); });
+
+  // Parse table rows
+  const dias = [];
+  const rows = doc.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const tds = row.querySelectorAll('td');
+    if (tds.length < 4) return;
+    const dateText  = tds[0].textContent.trim().replace(/[^\d/]/g,'');
+    const dateShort = dateText.substring(0,5); // DD/MM
+    if (!/^\d{2}\/\d{2}$/.test(dateShort)) return;
+
+    const actItems = row.querySelectorAll('.atividade-item');
+    const acts = [];
+    actItems.forEach(el => {
+      const t = el.textContent.trim().replace(/^[•·]\s*/,'').trim();
+      if (t) acts.push(t);
+    });
+    if (acts.length) dias.push({ d: dateShort, a: acts });
+  });
+
+  if (!dias.length) return null;
+  const total = dias.reduce((s,d) => s + d.a.length, 0);
+  return { usina, data: { total, dias, month } };
+}
+
+function showPreviewPMP(results) {
+  const usinas = Object.keys(results);
+  const totalActs = usinas.reduce((s,u) => s + results[u].total, 0);
+  document.getElementById('prev-pmp-title').textContent = `${usinas.length} usina(s) encontrada(s)`;
+  document.getElementById('prev-pmp-badge').textContent = `${totalActs} atividades no total`;
+  const container = document.getElementById('prev-pmp-rows');
+  container.innerHTML = usinas.map(u => {
+    const info = results[u];
+    return `<div class="import-preview-row">
+      <span class="utag" style="flex-shrink:0">${u}</span>
+      <span style="color:var(--text3);font-size:11px;flex-shrink:0">${info.month}</span>
+      <span style="color:var(--text2);flex:1">${info.total} atividades · ${info.dias.length} dias com agenda</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('prev-pmp').style.display       = 'block';
+  document.getElementById('pmp-import-mode-row').style.display = 'block';
+  document.getElementById('prog-pmp').style.display       = 'none';
+}
+
+// ── Progress helpers
+function setProgress(type, pct, msg) {
+  const bar = document.getElementById(`prog-${type}`);
+  const fill = document.getElementById(`prog-${type}-fill`);
+  const msgEl = document.getElementById(`prog-${type}-msg`);
+  if (bar)   bar.style.display  = pct > 0 && pct < 100 ? 'block' : (pct === 100 ? 'none' : 'none');
+  if (fill)  fill.style.width   = pct + '%';
+  if (msgEl) msgEl.textContent  = msg;
+  if (pct > 0 && pct < 100) bar.style.display = 'block';
+}
+
+function showResultError(type, msg) {
+  const el = document.getElementById('res-' + type);
+  el.style.display = 'block';
+  el.className = 'import-result error';
+  document.getElementById('res-' + type + '-msg').textContent = msg;
+  document.getElementById('res-' + type + '-sub').textContent = '';
+}
+
+function showResultSuccess(type, msg, sub) {
+  const el = document.getElementById('res-' + type);
+  el.style.display = 'block';
+  el.className = 'import-result';
+  document.getElementById('res-' + type + '-msg').textContent = msg;
+  document.getElementById('res-' + type + '-sub').textContent = sub || '';
+}
+
+// ── Confirm import
+function confirmImport() {
+  if (importActiveTab === 'os' && importParsedOS) {
+    const mode = document.querySelector('input[name="os-mode"]:checked').value;
+    if (mode === 'replace') {
+      OS = importParsedOS;
+    } else {
+      // merge: add new, update existing by id
+      importParsedOS.forEach(incoming => {
+        const idx = OS.findIndex(o => o.id === incoming.id);
+        if (idx >= 0) OS[idx] = incoming;
+        else OS.push(incoming);
+      });
+    }
+    saveStore(STORE_OS, OS);
+    const added = importParsedOS.length;
+    showResultSuccess('os',
+      `✓ ${added} ordens de serviço importadas com sucesso.`,
+      `Modo: ${mode === 'replace' ? 'substituição completa' : 'mesclagem'}`
+    );
+    document.getElementById('prev-os').style.display = 'none';
+    importParsedOS = null;
+    document.getElementById('btn-confirm-import').disabled = true;
+    refreshDataLists(); filterOS();
+    if (Object.keys(chartsRef).length) buildCharts();
+    showToast(`${added} OS importadas com sucesso.`);
+    setTimeout(() => closeModal('modal-import'), 1800);
+  }
+
+  if (importActiveTab === 'pmp' && importParsedPMP) {
+    const mode = document.querySelector('input[name="pmp-mode"]:checked').value;
+    const usinas = Object.keys(importParsedPMP);
+    if (mode === 'replace') {
+      usinas.forEach(u => { PMP[u] = importParsedPMP[u]; });
+    } else {
+      usinas.forEach(u => {
+        if (!PMP[u]) { PMP[u] = importParsedPMP[u]; return; }
+        // merge: insert activities by date
+        importParsedPMP[u].dias.forEach(d => {
+          const existing = PMP[u].dias.find(x => x.d === d.d);
+          if (existing) {
+            d.a.forEach(a => { if (!existing.a.includes(a)) existing.a.push(a); });
+          } else {
+            PMP[u].dias.push(d);
+          }
+        });
+        PMP[u].dias.sort((a,b) => {
+          const [ad,am]=a.d.split('/').map(Number),[bd,bm]=b.d.split('/').map(Number);
+          return am!==bm?am-bm:ad-bd;
+        });
+        PMP[u].total = PMP[u].dias.reduce((s,d)=>s+d.a.length,0);
+      });
+    }
+    savePMPStore(PMP);
+    showResultSuccess('pmp',
+      `✓ ${usinas.length} usina(s) importadas: ${usinas.join(', ')}`,
+      `Modo: ${mode === 'replace' ? 'substituição das usinas importadas' : 'mesclagem de atividades'}`
+    );
+    document.getElementById('prev-pmp').style.display = 'none';
+    importParsedPMP = null;
+    document.getElementById('btn-confirm-import').disabled = true;
+    updateMetrics(); refreshDataLists();
+    if (Object.keys(chartsRef).length) buildCharts();
+    showToast(`${usinas.length} usina(s) PMP importadas.`);
+    setTimeout(() => closeModal('modal-import'), 1800);
+  }
+}
+
+// helper — savePMPStore alias
+function savePMPStore(data) { saveStore(STORE_PMP, data); }
+
+// ─── BULK SELECT & DELETE ────────────────────────────────────────────────────
+function toggleRowSelect(idx, checked) {
+  if (checked) selectedRows.add(idx);
+  else selectedRows.delete(idx);
+  updateBulkBar();
+  // sync the row highlight without full re-render
+  const chk = document.querySelector(`.row-chk[data-idx="${idx}"]`);
+  if (chk) chk.closest('tr').classList.toggle('row-selected', checked);
+  // sync "select all" checkbox state
+  syncSelectAllCheckbox();
+}
+
+function toggleSelectAll(checked) {
+  // only affects currently visible (filtered) page rows
+  const pageIdxs = filteredOS
+    .slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE)
+    .map(o => OS.indexOf(o));
+  pageIdxs.forEach(idx => {
+    if (checked) selectedRows.add(idx);
+    else selectedRows.delete(idx);
+  });
+  updateBulkBar();
+  renderOSPage(); // re-render to reflect checkboxes + row highlights
+}
+
+function syncSelectAllCheckbox() {
+  const chkAll = document.getElementById('chk-all');
+  if (!chkAll) return;
+  const pageIdxs = filteredOS
+    .slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE)
+    .map(o => OS.indexOf(o));
+  if (!pageIdxs.length) { chkAll.checked = false; chkAll.indeterminate = false; return; }
+  const selCount = pageIdxs.filter(i => selectedRows.has(i)).length;
+  chkAll.indeterminate = selCount > 0 && selCount < pageIdxs.length;
+  chkAll.checked = selCount === pageIdxs.length;
+}
+
+function updateBulkBar() {
+  const bar   = document.getElementById('bulk-bar');
+  const count = document.getElementById('bulk-count');
+  if (!bar || !count) return; // elementos removidos do HTML — encerra sem erro
+  const n = selectedRows.size;
+  if (n > 0) {
+    bar.classList.add('on');
+    count.innerHTML = `<strong>${n}</strong> <span>ordem${n!==1?'s':''} selecionada${n!==1?'s':''}</span>`;
+  } else {
+    bar.classList.remove('on');
+  }
+}
+
+function clearSelection() {
+  selectedRows.clear();
+  updateBulkBar();
+  renderOSPage();
+}
+
+function confirmBulkDelete() {
+  const n = selectedRows.size;
+  if (!n) return;
+  // reuse the existing confirm modal
+  document.getElementById('conf-title').textContent = `Excluir ${n} ordem${n!==1?'s':''} de serviço?`;
+  document.getElementById('conf-msg').textContent   =
+    `Esta ação removerá permanentemente ${n} OS selecionada${n!==1?'s':''}. Não pode ser desfeita.`;
+  document.getElementById('conf-ok').onclick = () => {
+    // delete in reverse index order to avoid index shifting
+    const sorted = [...selectedRows].sort((a,b)=>b-a);
+    sorted.forEach(i => OS.splice(i, 1));
+    saveStore(STORE_OS, OS);
+    selectedRows.clear();
+    closeModal('modal-confirm');
+    updateBulkBar();
+    refreshDataLists();
+    filterOS();
+    if (Object.keys(chartsRef).length) buildCharts();
+    showToast(`${sorted.length} OS excluída${sorted.length!==1?'s':''}.`);
+  };
+  openModal('modal-confirm');
+}
+
+// ─── ROÇAGEM / LAVAGEM / HERBICIDA ───────────────────────────────────────────
+const STORE_ROCAGEM = 'maint_rocagem_v1';
+let ROCAGEM = loadStore(STORE_ROCAGEM, []);
+let rocagemFilter = 'all'; // 'all' | 'Roçagem' | 'Lavagem' | 'Herbicida'
+
+// Exact PMP task names for strict matching (case-insensitive trim)
+const RC_EXACT = {
+  'Roçagem':  'PMP - MANUTENÇÃO PREVENTIVA POR DEMANDA - ÁREA DE VEGETAÇÃO - ROÇAGEM',
+  'Lavagem':  'PMP - MANUTENÇÃO PREVENTIVA SEMESTRAL - ÁREA DE GERAÇÃO - LAVAGEM DOS MÓDULOS',
+  'Herbicida':'PMP - MANUTENÇÃO PREVENTIVA POR DEMANDA - ÁREA DE VEGETAÇÃO - HERBICIDA',
+};
+
+function detectRCType(text) {
+  const t = (text || '').trim().toUpperCase();
+  for (const [tipo, exact] of Object.entries(RC_EXACT)) {
+    if (t.includes(exact.toUpperCase())) return tipo;
+  }
+  return null;
+}
+
+function getOSRocagem() {
+  const result = { Roçagem: [], Lavagem: [], Herbicida: [] };
+  OS.forEach(o => {
+    const tipo = detectRCType(o.tarefa || '');
+    if (tipo) result[tipo].push(o);
+  });
+  return result;
+}
+
+function setRocagemFilter(value) {
+  rocagemFilter = value;
+  // Update button active states
+  ['all','rocagem','lavagem','herb'].forEach(k => {
+    const btn = document.getElementById('rc-btn-' + k);
+    if (btn) btn.classList.remove('rc-active');
+  });
+  const activeId = value === 'all' ? 'rc-btn-all'
+    : value === 'Roçagem'  ? 'rc-btn-rocagem'
+    : value === 'Lavagem'  ? 'rc-btn-lavagem'
+    : 'rc-btn-herb';
+  const activeBtn = document.getElementById(activeId);
+  if (activeBtn) activeBtn.classList.add('rc-active');
+  renderRocagem();
+}
+
+function renderRocagem() {
+  const osRC   = getOSRocagem();
+  const allCounts = {
+    Roçagem:  osRC['Roçagem'].length,
+    Lavagem:  osRC['Lavagem'].length,
+    Herbicida:osRC['Herbicida'].length,
+  };
+
+  // Determine which tipos are visible
+  const activeTypes = rocagemFilter === 'all'
+    ? ['Roçagem','Lavagem','Herbicida']
+    : [rocagemFilter];
+
+  // Update KPI counts — show full count always, dim inactive cards
+  document.getElementById('rc-rocagem-count').textContent = allCounts['Roçagem'];
+  document.getElementById('rc-lavagem-count').textContent = allCounts['Lavagem'];
+  document.getElementById('rc-herb-count').textContent    = allCounts['Herbicida'];
+
+  // Dim KPI cards not in current filter
+  ['Roçagem','Lavagem','Herbicida'].forEach(t => {
+    const cardId = t === 'Roçagem' ? 'rc-rocagem-card' : t === 'Lavagem' ? 'rc-lavagem-card' : 'rc-herb-card';
+    const card = document.getElementById(cardId);
+    if (card) card.classList.toggle('rc-dimmed', rocagemFilter !== 'all' && rocagemFilter !== t);
+  });
+
+  // Filter ROCAGEM table
+  const filteredRC = rocagemFilter === 'all' ? ROCAGEM : ROCAGEM.filter(r => r.tipo === rocagemFilter);
+
+  const countEl = document.getElementById('rc-filter-count');
+  if (countEl) countEl.textContent = rocagemFilter !== 'all'
+    ? `${filteredRC.length} de ${ROCAGEM.length} planejamentos`
+    : `${ROCAGEM.length} planejamento${ROCAGEM.length!==1?'s':''}`;
+
+  const statusColors = {
+    'Iniciada':     '#FFCA0A', 'Em andamento': '#1565c0', 'Finalizada':   '#2e7d32',
+    'Não iniciada': '#9a9189', 'Paralisada':   '#c62828'
+  };
+  const statusBg = {
+    'Iniciada':     '#fff8dc', 'Em andamento': '#e3f2fd', 'Finalizada':   '#e8f5e9',
+    'Não iniciada': '#eeece7', 'Paralisada':   '#fce4ec'
+  };
+
+  const tb = document.getElementById('rocagem-tbody');
+  tb.innerHTML = filteredRC.length ? filteredRC.map(r => {
+    const i = ROCAGEM.indexOf(r);
+    const sc = statusColors[r.status] || 'var(--text2)';
+    const sb = statusBg[r.status]    || 'var(--surface2)';
+    let statusLabel = r.status || '—';
+    if (r.status === 'Em andamento' && r.progresso) statusLabel += ` (${r.progresso}% realizado)`;
+    let justifHtml = '';
+    if ((r.status === 'Não iniciada' || r.status === 'Paralisada') && r.justificativa) {
+      justifHtml = `<div style="font-size:10px;color:#c62828;margin-top:3px;font-style:italic">Motivo: ${r.justificativa}</div>`;
+    }
+    const tipoColors = { Roçagem:['#e8f5e9','#2e7d32'], Lavagem:['#e3f2fd','#1565c0'], Herbicida:['#fff8e1','#f57f17'] };
+    const tc = tipoColors[r.tipo] || ['var(--surface2)','var(--text2)'];
+    return `<tr>
+      <td><span class="badge" style="background:${tc[0]};color:${tc[1]}">
+        ${r.tipo==='Roçagem'?'🌿':r.tipo==='Lavagem'?'💧':'🧪'} ${r.tipo}</span></td>
+      <td><span class="utag">${r.usina||'—'}</span></td>
+      <td style="font-size:12px">${r.inicio||'—'}</td>
+      <td style="font-size:12px">${r.fim||'—'}</td>
+      <td style="font-size:12px">${r.resp||'—'}</td>
+      <td>
+        <span class="badge" style="background:${sb};color:${sc}">${statusLabel}</span>
+        ${justifHtml}
+      </td>
+      <td style="max-width:220px">
+        <div style="font-size:11px;color:var(--text2);max-height:60px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;line-height:1.4">${r.obs||'—'}</div>
+      </td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-icon" title="Editar" onclick="openRocagemModal(${i})">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn btn-sm btn-icon btn-danger" title="Excluir" onclick="deleteRocagem(${i})">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div></td>
+    </tr>`;
+  }).join('') :
+    `<tr><td colspan="8"><div class="empty">Nenhum planejamento para o filtro selecionado.</div></td></tr>`;
+  document.getElementById('rocagem-count-label').textContent =
+    filteredRC.length + ' planejamento' + (filteredRC.length !== 1 ? 's' : '');
+
+  // Filter OS relacionadas
+  const allRC = activeTypes.flatMap(t => osRC[t] || []);
+  const titleEl = document.getElementById('rc-os-title');
+  if (titleEl) titleEl.textContent = rocagemFilter === 'all'
+    ? 'OS Relacionadas (Roçagem, Lavagem, Herbicida)'
+    : `OS Relacionadas — ${rocagemFilter}`;
+  const tb2 = document.getElementById('rocagem-os-tbody');
+  const bgMap = { Roçagem:'#e8f5e9', Lavagem:'#e3f2fd', Herbicida:'#fff8e1' };
+  const cMap  = { Roçagem:'#2e7d32', Lavagem:'#1565c0', Herbicida:'#f57f17' };
+  tb2.innerHTML = allRC.length ? allRC.map(o => {
+    const tipo = detectRCType(o.tarefa || '');
+    const sbc  = o.status === 'Em processo' ? 'b-proc' : 'b-verif';
+    return `<tr>
+      <td class="mono">${(o.id||'').substring(0,19)}</td>
+      <td><span class="utag">${o.usina||'—'}</span></td>
+      <td><span class="badge" style="background:${bgMap[tipo]||'var(--surface2)'};color:${cMap[tipo]||'var(--text2)'}">${tipo}</span></td>
+      <td style="font-size:12px;max-width:260px;white-space:normal;word-break:break-word">${o.tarefa||''}</td>
+      <td><span class="badge ${sbc}">${o.status}</span></td>
+      <td style="font-size:12px">${(o.data||'').substring(0,10).split('-').reverse().join('/')}</td>
+      <td style="font-size:12px">${o.resp||'—'}</td>
+    </tr>`;
+  }).join('') :
+    `<tr><td colspan="7"><div class="empty">Nenhuma OS com tarefa de ${rocagemFilter === 'all' ? 'Roçagem, Lavagem ou Herbicida' : rocagemFilter} encontrada.</div></td></tr>`;
+}
+
+function openRocagemModal(idx) {
+  document.getElementById('mrc-title').textContent = idx !== undefined ? 'Editar Planejamento' : 'Novo Planejamento';
+  document.getElementById('mrc-idx').value = idx !== undefined ? idx : '';
+  const r = idx !== undefined ? ROCAGEM[idx] : {};
+  document.getElementById('mrc-tipo').value       = r.tipo        || 'Roçagem';
+  document.getElementById('mrc-usina').value      = r.usina       || '';
+  document.getElementById('mrc-inicio').value     = r.inicio      || '';
+  document.getElementById('mrc-fim').value        = r.fim         || '';
+  document.getElementById('mrc-resp').value       = r.resp        || '';
+  document.getElementById('mrc-status').value     = r.status      || 'Iniciada';
+  document.getElementById('mrc-progresso').value  = r.progresso   || '';
+  document.getElementById('mrc-justif').value     = r.justificativa || '';
+  document.getElementById('mrc-obs').value        = r.obs         || '';
+  toggleRocagemFields(r.status || 'Iniciada');
+  openModal('modal-rocagem');
+}
+
+function toggleRocagemFields(status) {
+  const progressRow = document.getElementById('mrc-progress-row');
+  const justifRow   = document.getElementById('mrc-justif-row');
+  if (progressRow) progressRow.style.display = status === 'Em andamento' ? '' : 'none';
+  if (justifRow)   justifRow.style.display   = (status === 'Não iniciada' || status === 'Paralisada') ? '' : 'none';
+}
+
+function saveRocagem() {
+  const usina  = document.getElementById('mrc-usina').value.trim();
+  const status = document.getElementById('mrc-status').value;
+  if (!usina) { showToast('Informe a usina.', true); return; }
+  // Justificativa obrigatória para Não iniciada e Paralisada
+  const needsJustif = status === 'Não iniciada' || status === 'Paralisada';
+  const justif = document.getElementById('mrc-justif').value.trim();
+  if (needsJustif && !justif) { showToast('Informe a justificativa para este status.', true); return; }
+  const obj = {
+    tipo:          document.getElementById('mrc-tipo').value,
+    usina,
+    inicio:        document.getElementById('mrc-inicio').value,
+    fim:           document.getElementById('mrc-fim').value,
+    resp:          document.getElementById('mrc-resp').value.trim(),
+    status,
+    progresso:     document.getElementById('mrc-progresso').value.trim(),
+    justificativa: justif,
+    obs:           document.getElementById('mrc-obs').value.trim(),
+  };
+  const idx = document.getElementById('mrc-idx').value;
+  if (idx !== '') { ROCAGEM[parseInt(idx)] = obj; showToast('Planejamento atualizado.'); }
+  else { ROCAGEM.unshift(obj); showToast('Planejamento cadastrado.'); }
+  saveStore(STORE_ROCAGEM, ROCAGEM);
+  closeModal('modal-rocagem');
+  renderRocagem();
+}
+
+function deleteRocagem(idx) {
+  ROCAGEM.splice(idx, 1);
+  saveStore(STORE_ROCAGEM, ROCAGEM);
+  renderRocagem();
+  showToast('Planejamento excluído.');
+}
+
+function exportRocagem() {
+  if (!ROCAGEM.length) { showToast('Nenhum planejamento para exportar.', true); return; }
+  const headers = ['Atividade','Usina','Data Início','Data Fim','Responsável','Status','Progresso (%)','Justificativa','Observações'];
+  const rows = ROCAGEM.map(r => [
+    r.tipo, r.usina, r.inicio||'', r.fim||'', r.resp||'',
+    r.status, r.progresso||'', r.justificativa||'', r.obs||''
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  // Set column widths
+  ws['!cols'] = [14,10,12,12,20,14,12,30,40].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planejamento RC');
+  XLSX.writeFile(wb, `Planejamento_Rocagem_CasaForteEnergia_${new Date().toISOString().substring(0,10)}.xlsx`);
+  showToast('Planejamento exportado com sucesso.');
+}
+
+function exportInspArea() {
+  if (!INSP_AREA.length) { showToast('Nenhuma inspeção para exportar.', true); return; }
+  const headers = ['Data','Usina','Inspetor','Vegetação','Obs. Veg.','Sujidade','Obs. Suj.','Formigueiro/Cupinzeiro','Obs. Form.','Drenagem','Obs. Dren.','Avaliação Herbicida','Obs. Herb.','Observações Gerais'];
+  const rows = INSP_AREA.map(i => [
+    i.data, i.usina, i.inspetor||'',
+    i.veg||'', i.veg_obs||'',
+    i.suj||'', i.suj_obs||'',
+    i.form||'', i.form_obs||'',
+    i.dren||'', i.dren_obs||'',
+    i.herb||'', i.herb_obs||'',
+    i.obs||''
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [12,10,20,12,24,12,24,20,24,12,24,18,24,36].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Inspeção Área');
+  XLSX.writeFile(wb, `Inspecao_Area_CasaForteEnergia_${new Date().toISOString().substring(0,10)}.xlsx`);
+  showToast('Inspeções exportadas com sucesso.');
+}
+
+// ─── INSPEÇÃO DE ÁREA DE GERAÇÃO ──────────────────────────────────────────────
+const STORE_INSP_AREA = 'maint_insp_area_v1';
+let INSP_AREA = loadStore(STORE_INSP_AREA, []);
+
+const IA_PONTOS = ['veg','suj','form','dren','herb'];
+const IA_LABELS = { veg:'Vegetação', suj:'Sujidade', form:'Formigueiro/Cupinzeiro', dren:'Drenagem', herb:'Herbicida' };
+
+function statusDot(s) {
+  const colors = { Conforme:'#2e7d32', 'Atenção':'#f57f17', Crítico:'#c62828', 'N/A':'#9a9189' };
+  return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:${colors[s]||'#ccc'}20;color:${colors[s]||'#999'};border:1px solid ${colors[s]||'#ccc'}40">${s||'—'}</span>`;
+}
+
+function renderInspArea() {
+  const fu = document.getElementById('insp-f-usina') ? document.getElementById('insp-f-usina').value : '';
+  const fst = document.getElementById('insp-f-status') ? document.getElementById('insp-f-status').value : '';
+  let data = INSP_AREA;
+  if (fu) data = data.filter(i => i.usina === fu);
+  if (fst) data = data.filter(i => IA_PONTOS.some(p => i[p] === fst));
+  const tb = document.getElementById('insp-area-tbody');
+  if (!tb) return;
+  tb.innerHTML = data.length ? data.map((ins, idx) => {
+    const realIdx = INSP_AREA.indexOf(ins);
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap">${ins.data||'—'}</td>
+      <td><span class="utag">${ins.usina||'—'}</span></td>
+      <td>${statusDot(ins.veg)}<br><span style="font-size:10px;color:var(--text3)">${ins.veg_obs||''}</span></td>
+      <td>${statusDot(ins.suj)}<br><span style="font-size:10px;color:var(--text3)">${ins.suj_obs||''}</span></td>
+      <td>${statusDot(ins.form)}<br><span style="font-size:10px;color:var(--text3)">${ins.form_obs||''}</span></td>
+      <td>${statusDot(ins.dren)}<br><span style="font-size:10px;color:var(--text3)">${ins.dren_obs||''}</span></td>
+      <td>${statusDot(ins.herb)}<br><span style="font-size:10px;color:var(--text3)">${ins.herb_obs||''}</span></td>
+      <td style="font-size:12px">${ins.inspetor||'—'}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-icon" title="Editar" onclick="openInspAreaModal(${realIdx})">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn btn-sm btn-icon btn-danger" title="Excluir" onclick="deleteInspArea(${realIdx})">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div></td>
+    </tr>`;
+  }).join('') :
+    `<tr><td colspan="9"><div class="empty">Nenhuma inspeção cadastrada. Clique em <strong>Nova Inspeção</strong> para registrar.</div></td></tr>`;
+}
+
+function openInspAreaModal(idx) {
+  document.getElementById('mia-title').textContent = idx !== undefined ? 'Editar Inspeção em Área de Geração' : 'Nova Inspeção em Área de Geração';
+  document.getElementById('mia-idx').value = idx !== undefined ? idx : '';
+  const ins = idx !== undefined ? INSP_AREA[idx] : {};
+  document.getElementById('mia-usina').value    = ins.usina    || '';
+  document.getElementById('mia-data').value     = ins.data     || new Date().toISOString().substring(0,10);
+  document.getElementById('mia-inspetor').value = ins.inspetor || '';
+  IA_PONTOS.forEach(p => {
+    document.getElementById('mia-' + p).value         = ins[p]         || 'Conforme';
+    document.getElementById('mia-' + p + '-obs').value = ins[p + '_obs'] || '';
+  });
+  document.getElementById('mia-obs').value = ins.obs || '';
+  openModal('modal-insp-area');
+}
+
+function saveInspArea() {
+  const usina = document.getElementById('mia-usina').value.trim();
+  const data  = document.getElementById('mia-data').value;
+  if (!usina || !data) { showToast('Preencha usina e data.', true); return; }
+  const obj = { usina, data, inspetor: document.getElementById('mia-inspetor').value.trim(), obs: document.getElementById('mia-obs').value.trim() };
+  IA_PONTOS.forEach(p => {
+    obj[p]       = document.getElementById('mia-' + p).value;
+    obj[p+'_obs'] = document.getElementById('mia-' + p + '-obs').value.trim();
+  });
+  const idx = document.getElementById('mia-idx').value;
+  if (idx !== '') { INSP_AREA[parseInt(idx)] = obj; showToast('Inspeção atualizada.'); }
+  else { INSP_AREA.unshift(obj); showToast('Inspeção cadastrada.'); }
+  saveStore(STORE_INSP_AREA, INSP_AREA);
+  closeModal('modal-insp-area');
+  renderInspArea();
+}
+
+function deleteInspArea(idx) {
+  INSP_AREA.splice(idx, 1);
+  saveStore(STORE_INSP_AREA, INSP_AREA);
+  renderInspArea();
+  showToast('Inspeção excluída.');
+}
+
+// ─── ORDENS DE COMPRA (OC) ────────────────────────────────────────────────────
+const STORE_OC = 'maint_oc_v1';
+let OC = loadStore(STORE_OC, []);
+
+const OC_STATUS_COLORS = {
+  'OK': {bg:'#e8f5e9',c:'#2e7d32'}, 'PENDENTE': {bg:'#fff8e1',c:'#f57f17'},
+  'HM ASS': {bg:'#e3f2fd',c:'#1565c0'}, 'CONSULTAR TECNICO': {bg:'#fce4ec',c:'#c62828'},
+  'AGUARDAR ORÇAMENTO': {bg:'#f3e5f5',c:'#6a1b9a'}, 'HM APROVAR': {bg:'#e8eaf6',c:'#283593'},
+  'FINALIZADO': {bg:'#eeece7',c:'#3d3630'}
+};
+const OC_PRIO_COLORS = { 'Alta': {bg:'#fce4ec',c:'#c62828'}, 'Média': {bg:'#fff8e1',c:'#f57f17'}, 'Baixa': {bg:'#e8f5e9',c:'#2e7d32'} };
+
+function renderOC() {
+  const fs  = (document.getElementById('oc-search') ? document.getElementById('oc-search').value : '').toLowerCase();
+  const fu  = document.getElementById('oc-f-usina')  ? document.getElementById('oc-f-usina').value  : '';
+  const fst = document.getElementById('oc-f-status') ? document.getElementById('oc-f-status').value : '';
+  let data = OC.filter(o => {
+    if (fu  && o.usina  !== fu)  return false;
+    if (fst && o.status !== fst) return false;
+    if (fs) {
+      const hay = [o.equip, o.solicitante, o.numero, o.usina, o.orcamento].join(' ').toLowerCase();
+      if (!hay.includes(fs)) return false;
+    }
+    return true;
+  });
+  const countEl = document.getElementById('oc-count');
+  if (countEl) countEl.textContent = (fs||fu||fst) ? `${data.length} de ${OC.length}` : `${OC.length} OC`;
+  const tb = document.getElementById('oc-tbody');
+  if (!tb) return;
+  tb.innerHTML = data.length ? data.map(o => {
+    const realIdx = OC.indexOf(o);
+    const sc = OC_STATUS_COLORS[o.status] || {bg:'var(--surface2)',c:'var(--text2)'};
+    const pc = OC_PRIO_COLORS[o.prioridade] || {bg:'var(--surface2)',c:'var(--text2)'};
+    const yn = v => v === 'Sim' ? '✅' : v === 'Não' ? '❌' : v === 'Parcial' ? '⚠️' : (v||'—');
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap">${o.solicitante||'—'}</td>
+      <td><span class="utag">${o.usina||'—'}</span></td>
+      <td style="text-align:center;font-weight:600">${o.qtd||'—'}</td>
+      <td style="font-size:12px;max-width:180px">${(o.equip||'').substring(0,40)}</td>
+      <td style="font-size:11px;white-space:nowrap">${o.di||'—'}</td>
+      <td style="font-size:11px;white-space:nowrap">${o.df||'—'}</td>
+      <td style="font-size:12px;font-weight:600;white-space:nowrap">${o.valor ? 'R$ '+o.valor : '—'}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:120px">${(o.orcamento||'—').substring(0,25)}</td>
+      <td style="text-align:center">${yn(o.aprovada)}</td>
+      <td class="mono" style="font-size:11px">${o.numero||'—'}</td>
+      <td style="text-align:center">${yn(o.entregue)}</td>
+      <td style="text-align:center">${yn(o.normalizado)}</td>
+      <td><span class="badge" style="background:${sc.bg};color:${sc.c}">${o.status||'—'}</span></td>
+      <td><span class="badge" style="background:${pc.bg};color:${pc.c}">${o.prioridade||'—'}</span></td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-icon" title="Editar" onclick="openOCModal(${realIdx})">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn btn-sm btn-icon btn-danger" title="Excluir" onclick="deleteOC(${realIdx})">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div></td>
+    </tr>`;
+  }).join('') :
+    `<tr><td colspan="15"><div class="empty">Nenhuma OC cadastrada. Clique em <strong>Nova OC</strong> para adicionar.</div></td></tr>`;
+}
+
+function openOCModal(idx) {
+  document.getElementById('moc-title').textContent = idx !== undefined ? 'Editar OC' : 'Nova Ordem de Compra';
+  document.getElementById('moc-idx').value = idx !== undefined ? idx : '';
+  const o = idx !== undefined ? OC[idx] : {};
+  document.getElementById('moc-solicitante').value = o.solicitante || '';
+  document.getElementById('moc-usina').value       = o.usina       || '';
+  document.getElementById('moc-qtd').value         = o.qtd         || '';
+  document.getElementById('moc-equip').value       = o.equip       || '';
+  document.getElementById('moc-di').value          = o.di          || '';
+  document.getElementById('moc-df').value          = o.df          || '';
+  document.getElementById('moc-valor').value       = o.valor       || '';
+  document.getElementById('moc-orcamento').value   = o.orcamento   || '';
+  document.getElementById('moc-aprovada').value    = o.aprovada    || '';
+  document.getElementById('moc-numero').value      = o.numero      || '';
+  document.getElementById('moc-entregue').value    = o.entregue    || '';
+  document.getElementById('moc-normalizado').value = o.normalizado || '';
+  document.getElementById('moc-status').value      = o.status      || '';
+  document.getElementById('moc-prioridade').value  = o.prioridade  || '';
+  openModal('modal-oc');
+}
+
+function saveOC() {
+  const solicitante = document.getElementById('moc-solicitante').value.trim();
+  const equip       = document.getElementById('moc-equip').value.trim();
+  const usina       = document.getElementById('moc-usina').value.trim();
+  if (!solicitante || !equip || !usina) { showToast('Preencha solicitante, usina e equipamento.', true); return; }
+  const obj = {
+    solicitante, usina, equip,
+    qtd:        document.getElementById('moc-qtd').value,
+    di:         document.getElementById('moc-di').value,
+    df:         document.getElementById('moc-df').value,
+    valor:      document.getElementById('moc-valor').value.trim(),
+    orcamento:  document.getElementById('moc-orcamento').value.trim(),
+    aprovada:   document.getElementById('moc-aprovada').value,
+    numero:     document.getElementById('moc-numero').value.trim(),
+    entregue:   document.getElementById('moc-entregue').value,
+    normalizado:document.getElementById('moc-normalizado').value,
+    status:     document.getElementById('moc-status').value,
+    prioridade: document.getElementById('moc-prioridade').value,
+  };
+  const idx = document.getElementById('moc-idx').value;
+  if (idx !== '') { OC[parseInt(idx)] = obj; showToast('OC atualizada.'); }
+  else { OC.unshift(obj); showToast('OC cadastrada.'); }
+  saveStore(STORE_OC, OC);
+  closeModal('modal-oc');
+  renderOC();
+}
+
+function deleteOC(idx) {
+  OC.splice(idx, 1);
+  saveStore(STORE_OC, OC);
+  renderOC();
+  showToast('OC excluída.');
+}
+
+function exportOC() {
+  if (!OC.length) { showToast('Nenhuma OC para exportar.', true); return; }
+  const headers = ['Solicitado Por','Usina','Quantidade','Equipamento','Data Inicial','Data Final','R$','Orçamento','OC Aprovada','N° da OC','Equip. Entregue','Normalizado em Campo','Status','Prioridade'];
+  const rows = OC.map(o => [o.solicitante,o.usina,o.qtd,o.equip,o.di,o.df,o.valor,o.orcamento,o.aprovada,o.numero,o.entregue,o.normalizado,o.status,o.prioridade]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'OC');
+  XLSX.writeFile(wb, `OC_CasaForteEnergia_${new Date().toISOString().substring(0,10)}.xlsx`);
+  showToast('OC exportada com sucesso.');
+}
+
+// ─── RESET ───────────────────────────────────────────────────────────────────
+// ─── FILTER RESET (direct, no modal) ─────────────────────────────────────────
+function resetFilters() {
+  document.getElementById('f-search').value = '';
+  document.getElementById('f-usina').value  = '';
+  document.getElementById('f-status').value = '';
+  document.getElementById('f-tipo').value   = '';
+  filterOS();
+  showToast('Filtros limpos.');
+}
+
+// ─── DELETE DATA MODAL ────────────────────────────────────────────────────────
+function openDeleteDataModal() {
+  const osCount  = OS.length;
+  const pmpCount = Object.keys(PMP).length;
+  const pmpActs  = Object.values(PMP).reduce((s,u) => s + (u.total||0), 0);
+
+  document.getElementById('rc-os-count').textContent =
+    osCount ? `${osCount} ordem${osCount!==1?'s':''} de serviço` : 'Nenhuma OS cadastrada';
+  document.getElementById('rc-pmp-count').textContent =
+    pmpCount ? `${pmpCount} usina${pmpCount!==1?'s':''} · ${pmpActs} atividade${pmpActs!==1?'s':''}` : 'Nenhum plano cadastrado';
+
+  // reset checkboxes
+  ['chk-os','chk-pmp'].forEach(id => {
+    const el = document.getElementById(id);
+    el.checked = false;
+    el.closest('.reset-check-item').classList.remove('checked');
+  });
+  document.getElementById('btn-do-delete').disabled = true;
+  openModal('modal-delete-data');
+}
+
+function toggleResetCheck(itemId) {
+  const item = document.getElementById(itemId);
+  const chk  = item.querySelector('input[type=checkbox]');
+  chk.checked = !chk.checked;
+  item.classList.toggle('checked', chk.checked);
+  const any = ['chk-os','chk-pmp'].some(id => document.getElementById(id).checked);
+  document.getElementById('btn-do-delete').disabled = !any;
+}
+
+function doDeleteData() {
+  const parts = [];
+  if (document.getElementById('chk-os').checked) {
+    OS = []; saveStore(STORE_OS, OS); parts.push('OS');
+  }
+  if (document.getElementById('chk-pmp').checked) {
+    PMP = {}; saveStore(STORE_PMP, PMP); parts.push('PMP');
+  }
+  closeModal('modal-delete-data');
+  selectedRows.clear();
+  updateBulkBar();
+  refreshDataLists();
+  filterOS();
+  if (Object.keys(chartsRef).length) buildCharts();
+  if (document.getElementById('sec-pmp').classList.contains('on')) {
+    renderUsinaSelector(); renderPMPDetail();
+  }
+  showToast(`✓ Excluído: ${parts.join(', ')}.`);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+// Set month badge dynamically
+(function(){
+  const now = new Date();
+  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const label = `📅 ${months[now.getMonth()]} / ${now.getFullYear()}`;
+  const el = document.getElementById('hdr-month');
+  if (el) el.textContent = label;
+  // also update PMP chart title
+  const ch = document.querySelector('#sec-charts .chart-card:last-child h3');
+  if (ch) ch.textContent = `Atividades PMP planejadas por dia — ${months[now.getMonth()]}/${now.getFullYear()}`;
+})();
+refreshDataLists();
+filterOS();   // populates filteredOS and calls updateMetrics() internally
+</script>
+</body>
+</html>
